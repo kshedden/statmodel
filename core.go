@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gonum/matrix/mat64"
-	"github.com/gonum/optimize"
 	"github.com/kshedden/dstream/dstream"
 )
 
@@ -18,21 +17,34 @@ const (
 	ExpHess
 )
 
-// IndRegModel is a single-index parametric or semiparametric
-// regression model in which the observations are independent.
-type IndRegModel struct {
-	Data dstream.Reg
-}
+// Parameter is the parameter of a model.
+type Parameter interface{}
 
-type Fitter interface {
-	DataSet() dstream.Reg
-	LogLike([]float64, float64) float64
-	Score([]float64, float64, []float64)
-	Hessian([]float64, float64, HessType, []float64)
+// RegFitter is a regression model that can be fit to data.
+type RegFitter interface {
+
+	// Number of parameters in the model.
+	NumParams() int
+
+	// Positions of the covariates in the Dstream
+	Xpos() []int
+
+	// The dataset, including covariates and outcomes, and if
+	// relevant, weights, strata, and other variables.
+	DataSet() dstream.Dstream
+
+	// The log-likelihood function
+	LogLike(Parameter) float64
+
+	// The score vector
+	Score(Parameter, []float64)
+
+	// The Hessian matrix
+	Hessian(Parameter, HessType, []float64)
 }
 
 type BaseResultser interface {
-	Model() Fitter
+	Model() RegFitter
 	Names() []string
 	LogLike() float64
 	Params() []float64
@@ -43,7 +55,7 @@ type BaseResultser interface {
 }
 
 type BaseResults struct {
-	model   Fitter
+	model   RegFitter
 	loglike float64
 	params  []float64
 	xnames  []string
@@ -53,7 +65,7 @@ type BaseResults struct {
 	pvalues []float64
 }
 
-func NewBaseResults(model Fitter, loglike float64, params []float64, xnames []string, vcov []float64) BaseResults {
+func NewBaseResults(model RegFitter, loglike float64, params []float64, xnames []string, vcov []float64) BaseResults {
 	return BaseResults{
 		model:   model,
 		loglike: loglike,
@@ -63,7 +75,7 @@ func NewBaseResults(model Fitter, loglike float64, params []float64, xnames []st
 	}
 }
 
-func (rslt *BaseResults) Model() Fitter {
+func (rslt *BaseResults) Model() RegFitter {
 	return rslt.model
 }
 
@@ -71,7 +83,7 @@ func (rslt *BaseResults) Model() Fitter {
 // model.  If da is nil, the fitted values are based on the data used
 // to it the mode.  If da is provided it is used to produce the fitted
 // values, so must have the same columns as the training data.
-func (rslt *BaseResults) FittedValues(da dstream.Reg) []float64 {
+func (rslt *BaseResults) FittedValues(da dstream.Dstream) []float64 {
 
 	if da == nil {
 		da = rslt.model.DataSet()
@@ -80,13 +92,15 @@ func (rslt *BaseResults) FittedValues(da dstream.Reg) []float64 {
 	ii := 0
 	n := 0
 
+	xp := rslt.model.Xpos()
+
 	da.Reset()
 	for da.Next() {
-		for j := 0; j < da.NumCov(); j++ {
-			z := da.XData(j)
+		for k, j := range xp {
+			z := da.GetPos(j).([]float64)
 			n = len(z)
 			for i, v := range z {
-				fv[ii+i] += rslt.params[j] * v
+				fv[ii+i] += rslt.params[k] * v
 			}
 		}
 		ii += n
@@ -95,7 +109,7 @@ func (rslt *BaseResults) FittedValues(da dstream.Reg) []float64 {
 	return fv
 }
 
-func (rslt *BaseResults) XNames() []string {
+func (rslt *BaseResults) Names() []string {
 	return rslt.xnames
 }
 
@@ -118,7 +132,7 @@ func (rslt *BaseResults) StdErr() []float64 {
 		return nil
 	}
 
-	p := rslt.model.DataSet().NumCov()
+	p := rslt.model.NumParams()
 	if rslt.stderr == nil {
 		rslt.stderr = make([]float64, p)
 	} else {
@@ -139,7 +153,7 @@ func (rslt *BaseResults) ZScores() []float64 {
 		return nil
 	}
 
-	p := rslt.model.DataSet().NumCov()
+	p := rslt.model.NumParams()
 	if rslt.zscores == nil {
 		rslt.zscores = make([]float64, p)
 	} else {
@@ -165,7 +179,7 @@ func (rslt *BaseResults) PValues() []float64 {
 		return nil
 	}
 
-	p := rslt.model.DataSet().NumCov()
+	p := rslt.model.NumParams()
 	if rslt.pvalues == nil {
 		rslt.pvalues = make([]float64, p)
 	} else {
@@ -185,54 +199,21 @@ func negative(x []float64) {
 	}
 }
 
-func FitParams(model Fitter, start []float64) ([]float64, float64) {
-
-	p := optimize.Problem{
-		Func: func(x []float64) float64 { return -model.LogLike(x, 1) },
-		Grad: func(grad, x []float64) {
-			model.Score(x, 1, grad)
-			negative(grad)
-		},
-	}
-
-	settings := optimize.DefaultSettings()
-	settings.Recorder = nil
-	settings.GradientThreshold = 1e-8
-	settings.FunctionConverge = &optimize.FunctionConverge{
-		Absolute:   0,
-		Relative:   0,
-		Iterations: 200,
-	}
-
-	optrslt, err := optimize.Local(p, start, settings, &optimize.BFGS{})
-	if err != nil {
-		panic(err)
-	}
-	if err = optrslt.Status.Err(); err != nil {
-		panic(err)
-	}
-
-	params := optrslt.X
-	fvalue := -optrslt.F
-
-	return params, fvalue
-}
-
-func GetVcov(model Fitter, params []float64) []float64 {
-	nvar := model.DataSet().NumCov()
+func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
+	nvar := model.NumParams()
 	n2 := nvar * nvar
 	hess := make([]float64, n2)
-	model.Hessian(params, 1, ExpHess, hess)
+	model.Hessian(params, ExpHess, hess)
 	hmat := mat64.NewDense(nvar, nvar, hess)
 	hessi := make([]float64, n2)
 	himat := mat64.NewDense(nvar, nvar, hessi)
 	err := himat.Inverse(hmat)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	himat.Scale(-1, himat)
 
-	return hessi
+	return hessi, nil
 }
 
 // Summary returns a string that holds a table of coefficients,
@@ -245,7 +226,7 @@ func (rslt *BaseResults) Summary() string {
 
 	p := len(rslt.params)
 
-	tw := 80
+	tw := 72
 
 	if rslt.xnames == nil {
 		rslt.xnames = make([]string, p)

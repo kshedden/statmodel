@@ -1,11 +1,6 @@
 package statmodel
 
-import (
-	"fmt"
-	"math"
-
-	"github.com/kshedden/dstream/dstream"
-)
+import "github.com/kshedden/dstream/dstream"
 
 // L1RegFitter describes a model that can be fit using L1 parameter
 // regularization.
@@ -13,18 +8,21 @@ type L1RegFitter interface {
 
 	// The log-likelihood not including L1 penalty, with scale
 	// parameter set equal to 1.
-	LogLike([]float64) float64
+	LogLike(Parameter) float64
 
 	// The score function not including L1 penalty, with scale
 	// parameter set equal to 1.
-	Score([]float64, []float64)
+	Score(Parameter, []float64)
 
 	// The Hessian matrix not including L1 penalty, with scale
 	// parameter set equal to 1.
-	Hessian([]float64, []float64)
+	Hessian(Parameter, []float64)
 
 	// The data to which the model is fit.
-	Data() dstream.Reg
+	Data() dstream.Dstream
+
+	// Positions of the covariates in the Dstream
+	Xpos() []int
 
 	// The L1 penalty weights.
 	L1wgt() []float64
@@ -40,6 +38,7 @@ type L1RegFitter interface {
 	CloneWithNewData(dstream.Reg) L1RegFitter
 }
 
+/*
 // FitL1Reg fits the provided L1RegFitter and returns the array of
 // parameter values.
 func FitL1Reg(rf L1RegFitter) []float64 {
@@ -48,7 +47,7 @@ func FitL1Reg(rf L1RegFitter) []float64 {
 	maxiter := 400
 
 	dp := rf.Data()
-	nvar := dp.NumCov()
+	nvar := len(rf.Xpos())
 	l1wgt := rf.L1wgt()
 	params := make([]float64, nvar)
 	var px float64 // l-inf parameter change
@@ -191,3 +190,4 @@ func bisection(f func([]float64) float64, xl, xu, tol float64) float64 {
 
 	return x1
 }
+*/
