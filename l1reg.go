@@ -1,7 +1,6 @@
 package statmodel
 
-import "github.com/kshedden/dstream/dstream"
-
+/*
 // L1RegFitter describes a model that can be fit using L1 parameter
 // regularization.
 type L1RegFitter interface {
@@ -37,6 +36,7 @@ type L1RegFitter interface {
 	// replacing the DataProvider with the given value.
 	CloneWithNewData(dstream.Reg) L1RegFitter
 }
+*/
 
 /*
 // FitL1Reg fits the provided L1RegFitter and returns the array of

@@ -3,11 +3,12 @@ package statmodel
 import (
 	"testing"
 
-	"github.com/gonum/floats"
+	"gonum.org/v1/gonum/floats"
+
 	"github.com/kshedden/dstream/dstream"
 )
 
-func data1() (dstream.Dstream, dstream.Reg) {
+func data1() dstream.Dstream {
 	y := []interface{}{
 		[]float64{0, 1, 3, 2, 1, 1, 0},
 	}
@@ -20,11 +21,10 @@ func data1() (dstream.Dstream, dstream.Reg) {
 	dat := [][]interface{}{y, x1, x2}
 	na := []string{"y", "x1", "x2"}
 	da := dstream.NewFromArrays(dat, na)
-	dr := dstream.NewReg(da, "y", []string{"x1", "x2"}, "", "")
-	return da, dr
+	return da
 }
 
-func data2() (dstream.Dstream, dstream.Reg) {
+func data2() dstream.Dstream {
 	y := []interface{}{
 		[]float64{0, 0, 1, 0, 1, 0, 0},
 	}
@@ -40,70 +40,62 @@ func data2() (dstream.Dstream, dstream.Reg) {
 	dat := [][]interface{}{y, x1, x2, x3}
 	na := []string{"y", "x1", "x2", "x3"}
 	da := dstream.NewFromArrays(dat, na)
-	dr := dstream.NewReg(da, "y", []string{"x1", "x2", "x3"}, "", "")
-	return da, dr
+	return da
 }
 
 func TestDims(t *testing.T) {
 
-	da, dr := data1()
-	if da.NumObs() != 7 || dr.NumObs() != 7 {
+	da := data1()
+	if da.NumObs() != 7 {
 		t.Fail()
 	}
-	if da.NumVar() != 3 || dr.NumVar() != 3 {
-		t.Fail()
-	}
-	if dr.NumCov() != 2 {
+	if da.NumVar() != 3 {
 		t.Fail()
 	}
 
-	da, dr = data2()
-	if da.NumObs() != 7 || dr.NumObs() != 7 {
+	da = data2()
+	if da.NumObs() != 7 {
 		t.Fail()
 	}
-	if da.NumVar() != 4 || dr.NumVar() != 4 {
-		t.Fail()
-	}
-	if dr.NumCov() != 3 {
+	if da.NumVar() != 4 {
 		t.Fail()
 	}
 }
 
 // A mock model for testing
 type Mock struct {
-	data dstream.Reg
+	data dstream.Dstream
+	xpos []int
 }
 
-func (m *Mock) DataSet() dstream.Reg {
+func (m *Mock) DataSet() dstream.Dstream {
 	return m.data
 }
 
-func (m *Mock) LogLike(params []float64, scale float64) float64 {
+func (m *Mock) LogLike(params Parameter) float64 {
 	return 0
 }
 
-func (m *Mock) Score(params []float64, scale float64, score []float64) {
+func (m *Mock) Score(params Parameter, score []float64) {
 }
 
-func (m *Mock) Hessian(params []float64, scale float64, ht HessType, score []float64) {
+func (m *Mock) Hessian(params Parameter, ht HessType, score []float64) {
 }
 
-func TestFitParams1(t *testing.T) {
+func (m *Mock) NumParams() int {
+	return m.data.NumVar() - 1
+}
 
-	_, dr := data1()
-	model := &Mock{
-		dr,
-	}
-
-	FitParams(model, make([]float64, dr.NumCov()))
+func (m *Mock) Xpos() []int {
+	return m.xpos
 }
 
 func TestResult1(t *testing.T) {
 
-	da, dr := data1()
-	rd := dstream.NewReg(dr, "y", nil, "", "")
+	da := data1()
 	model := &Mock{
-		rd,
+		da,
+		[]int{1, 2},
 	}
 
 	params := []float64{1, 2}
@@ -112,6 +104,7 @@ func TestResult1(t *testing.T) {
 
 	r := NewBaseResults(model, 0, params, xnames, vcov)
 
+	// Test fitted values on the training data.
 	fv := []float64{9, 3, -1, 7, 11, -9, 7}
 	if !floats.Equal(fv, r.FittedValues(nil)) {
 		t.Fail()
@@ -124,11 +117,10 @@ func TestResult1(t *testing.T) {
 		}
 	}
 
-	// Test when passing a new data stream.
+	// Test fitted values when passing a new data stream.
 	da = dstream.Mutate(da, "x2", f)
-	dr = dstream.NewReg(da, "y", nil, "", "")
 	fv = []float64{17, 5, -3, 13, 21, -19, 13}
-	if !floats.Equal(fv, r.FittedValues(dr)) {
+	if !floats.Equal(fv, r.FittedValues(da)) {
 		t.Fail()
 	}
 }

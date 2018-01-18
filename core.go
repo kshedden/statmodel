@@ -6,7 +6,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/gonum/matrix/mat64"
+	"gonum.org/v1/gonum/mat"
+
 	"github.com/kshedden/dstream/dstream"
 )
 
@@ -204,9 +205,9 @@ func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	n2 := nvar * nvar
 	hess := make([]float64, n2)
 	model.Hessian(params, ExpHess, hess)
-	hmat := mat64.NewDense(nvar, nvar, hess)
+	hmat := mat.NewDense(nvar, nvar, hess)
 	hessi := make([]float64, n2)
-	himat := mat64.NewDense(nvar, nvar, hessi)
+	himat := mat.NewDense(nvar, nvar, hessi)
 	err := himat.Inverse(hmat)
 	if err != nil {
 		return nil, err
