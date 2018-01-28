@@ -217,124 +217,123 @@ func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	return hessi, nil
 }
 
-// Summary returns a string that holds a table of coefficients,
-// standard errors, z-scores, and p-values for the fitted model.
-func (rslt *BaseResults) Summary() string {
+type Summary struct {
 
-	if rslt.params == nil {
-		return ""
-	}
+	// Title
+	Title string
 
-	p := len(rslt.params)
+	// Column names
+	ColNames []string
 
-	tw := 72
+	// Formatters for the column values
+	ColFmt []Fmter
 
-	if rslt.xnames == nil {
-		rslt.xnames = make([]string, p)
-		for k, _ := range rslt.params {
-			rslt.xnames[k] = fmt.Sprintf("V%d", k)
+	// Cols[j] is the j^th column.  It's concrete type should
+	// be an array, e.g. of numbers or strings.
+	Cols []interface{}
+
+	// Values at the top of the summary
+	Top []string
+
+	// Messages displayed below the table
+	Msg []string
+
+	// Total width of the table
+	tw int
+}
+
+// Draw a line constructed of the given character filling the width of
+// the table.
+func (s *Summary) line(c string) string {
+	return strings.Repeat(c, s.tw) + "\n"
+}
+
+// Construct the upper part of the table, which contains summary
+// values for the model.
+func (s *Summary) top(gap int) string {
+
+	w := []int{0, 0}
+
+	for j, x := range s.Top {
+		if len(x) > w[j%2] {
+			w[j%2] = len(x)
 		}
 	}
 
-	gapw := 2
-	gap := strings.Repeat(" ", gapw)
+	var b bytes.Buffer
 
-	namesf := fmtstrings(rslt.xnames, 8)
-	m := maxlen(namesf)
-	w := []int{m, 12, 12, 12, 12}
-
-	paramsf := fmtfloats(rslt.params, p, w[1])
-
-	// May or may not be available
-	var stdf, zscoref, pvaluesf []string
-	if rslt.StdErr() != nil {
-		stdf = fmtfloats(rslt.StdErr(), p, w[2])
-		zscoref = fmtfloats(rslt.ZScores(), p, w[3])
-		pvaluesf = fmtfloats(rslt.PValues(), p, w[4])
-	} else {
-		for _, _ = range rslt.params {
-			stdf = append(stdf, "")
-			zscoref = append(zscoref, "")
-			pvaluesf = append(pvaluesf, "")
+	for j, x := range s.Top {
+		c := fmt.Sprintf("%%-%ds", w[j%2])
+		b.Write([]byte(fmt.Sprintf(c, x)))
+		if j%2 == 1 {
+			b.Write([]byte("\n"))
+		} else {
+			b.Write([]byte(strings.Repeat(" ", gap)))
 		}
+	}
+
+	if len(s.Top)%2 == 1 {
+		b.Write([]byte("\n"))
+	}
+
+	return b.String()
+}
+
+// Fmter formats the elements of an array of values.
+type Fmter func(interface{}, string) []string
+
+// String returns the table as a string.
+func (s *Summary) String() string {
+
+	var tab [][]string
+	var wx []int
+	for j, c := range s.Cols {
+		u := s.ColFmt[j](c, s.ColNames[j])
+		tab = append(tab, u)
+		if len(u[0]) > len(s.ColNames[j]) {
+			wx = append(wx, len(u[0]))
+		} else {
+			wx = append(wx, len(s.ColNames[j]))
+		}
+	}
+
+	s.tw = 0
+	for _, w := range wx {
+		s.tw += w
 	}
 
 	var buf bytes.Buffer
 
-	buf.Write([]byte(strings.Repeat("-", tw)))
+	k := len(s.Title)
+	buf.Write([]byte(strings.Repeat(" ", (s.tw-k)/2)))
+	buf.Write([]byte(s.Title))
 	buf.Write([]byte("\n"))
 
-	// Header
-	c := fmt.Sprintf("%%%ds", w[0]+gapw)
-	buf.Write([]byte(fmt.Sprintf(c, "Variable"+gap)))
-	c = fmt.Sprintf("%%%ds", w[1]+gapw)
-	buf.Write([]byte(fmt.Sprintf(c, "Coefficient"+gap)))
-	c = fmt.Sprintf("%%%ds", w[2]+gapw)
-	buf.Write([]byte(fmt.Sprintf(c, "StdErr"+gap)))
-	c = fmt.Sprintf("%%%ds", w[3]+gapw)
-	buf.Write([]byte(fmt.Sprintf(c, "Z-Score"+gap)))
-	c = fmt.Sprintf("%%%ds", w[4]+gapw)
-	buf.Write([]byte(fmt.Sprintf(c, "P-Value"+gap)))
-	buf.Write([]byte("\n"))
-	buf.Write([]byte(strings.Repeat("-", tw)))
-	buf.Write([]byte("\n"))
+	buf.Write([]byte(s.line("=")))
+	buf.Write([]byte(s.top(10)))
+	buf.Write([]byte(s.line("-")))
 
-	// Parameter information
-	for j, na := range namesf {
-		buf.Write([]byte(na))
-		buf.Write([]byte(gap))
-		buf.Write([]byte(paramsf[j]))
-		buf.Write([]byte(gap))
-		buf.Write([]byte(stdf[j]))
-		buf.Write([]byte(gap))
-		buf.Write([]byte(zscoref[j]))
-		buf.Write([]byte(gap))
-		buf.Write([]byte(pvaluesf[j]))
+	for j, c := range s.ColNames {
+		f := fmt.Sprintf("%%%ds", wx[j])
+		buf.Write([]byte(fmt.Sprintf(f, c)))
+	}
+	buf.Write([]byte("\n"))
+	buf.Write([]byte(s.line("-")))
+
+	for i := 0; i < len(tab[0]); i++ {
+		for j := 0; j < len(tab); j++ {
+			f := fmt.Sprintf("%%%ds", wx[j])
+			buf.Write([]byte(fmt.Sprintf(f, tab[j][i])))
+		}
 		buf.Write([]byte("\n"))
 	}
+	buf.Write([]byte(s.line("-")))
 
-	buf.Write([]byte(strings.Repeat("-", tw)))
-	buf.Write([]byte("\n"))
-
-	return buf.String()
-}
-
-func fmtstrings(f []string, minw int) []string {
-
-	w := maxlen(f)
-	if w < minw {
-		w = minw
-	}
-	s := make([]string, len(f))
-	c := fmt.Sprintf("%%-%ds", w)
-
-	for i, x := range f {
-		s[i] = fmt.Sprintf(c, x)
-	}
-
-	return s
-}
-
-func fmtfloats(f []float64, p int, w int) []string {
-	var s []string
-	if f != nil {
-		s = make([]string, len(f))
-	} else {
-		return make([]string, p)
-	}
-	c := fmt.Sprintf("%%%d.4f", w)
-	for i, v := range f {
-		s[i] = fmt.Sprintf(c, v)
-	}
-	return s
-}
-
-func maxlen(s []string) int {
-	k := 0
-	for _, v := range s {
-		if len(v) > k {
-			k = len(v)
+	if len(s.Msg) > 0 {
+		for _, msg := range s.Msg {
+			buf.Write([]byte(msg + "\n"))
 		}
 	}
-	return k
+
+	return buf.String()
 }
