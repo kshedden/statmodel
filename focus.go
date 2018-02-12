@@ -7,7 +7,8 @@ import (
 )
 
 // FocusData is a Dstream that collapses a dataset by linear reduction
-// over all but one covariate.
+// over all but one covariate.  Its main use is in coordinate
+// optimization, e.g. for elastic net regression.
 type FocusData struct {
 
 	// The underlying data being focused
@@ -16,32 +17,32 @@ type FocusData struct {
 	// The positions of the covariates in the underlying data
 	xpos []int
 
-	// The dependent variable positio
-	ypos int
-
 	// The position of an actual offset in data, if an actual
 	// offset is present.  Otherwise this is -1.
 	offsetPos int
 
-	// The position of a weight variable in data, if a weight
-	// variable is present.  Otherwise this is -1.
-	weightPos int
+	// The names of all other variables from the dataset to retain
+	// in the focused data.
+	otherNames []string
+
+	// The positions of the variables in otherNames
+	otherPos []int
+
+	// All other retained data, indexed by name
+	otherData map[string][][]float64
 
 	// The offset formed by combining the actual offset with the
 	// effects of all non-focus variables.
 	offset [][]float64
 
-	// The DV (reference to data).
-	y [][]float64
-
 	// The focus x
 	x [][]float64
 
-	// Weights (optional)
-	w [][]float64
-
 	// Scale factors for the covariates
 	xn []float64
+
+	// Variable positions in the source data
+	varpos map[string]int
 
 	// Current chunk index
 	chunk int
@@ -56,12 +57,7 @@ func (f *FocusData) NumObs() int {
 }
 
 func (f *FocusData) NumVar() int {
-	nvar := 3
-	if f.weightPos != -1 {
-		nvar++
-	}
-
-	return nvar
+	return 2 + len(f.otherNames)
 }
 
 func (f *FocusData) Reset() {
@@ -70,59 +66,45 @@ func (f *FocusData) Reset() {
 
 func (f *FocusData) Next() bool {
 	f.chunk++
-	return f.chunk < len(f.y)
+	return f.chunk < len(f.x)
+}
+
+func (f *FocusData) Get(na string) interface{} {
+
+	switch {
+	case na == "x":
+		return f.x[f.chunk]
+	case na == "off":
+		return f.offset[f.chunk]
+	default:
+		z, ok := f.otherData[na]
+		if !ok {
+			msg := fmt.Sprintf("Variable '%s' not found\n", na)
+			panic(msg)
+		}
+		return z[f.chunk]
+	}
 }
 
 func (f *FocusData) GetPos(pos int) interface{} {
 
 	switch {
 	case pos == 0:
-		return f.y[f.chunk]
-	case pos == 1:
 		return f.x[f.chunk]
-	case pos == 2:
+	case pos == 1:
 		return f.offset[f.chunk]
-	case pos == 3:
-		if f.weightPos != -1 {
-			return f.w[f.chunk]
-		} else {
-			panic("Invalid position in GetPos (no weight variable)\n")
-		}
 	default:
-		panic("Invalid position in GetPos\n")
+		return f.otherData[f.otherNames[pos-2]][f.chunk]
 	}
 
 	return nil
 }
 
-func (f *FocusData) Get(name string) interface{} {
-
-	switch {
-	case name == "y":
-		return f.y[f.chunk]
-	case name == "x":
-		return f.x[f.chunk]
-	case name == "off":
-		return f.offset[f.chunk]
-	case name == "wgt":
-		if f.weightPos != -1 {
-			return f.w[f.chunk]
-		} else {
-			panic("Invalid position in GetPos (no weight variable)\n")
-		}
-	default:
-		msg := fmt.Sprintf("Name '%s' not found\n", name)
-		panic(msg)
-	}
-}
-
-func NewFocusData(data dstream.Dstream, xpos []int, ypos int, xn []float64) *FocusData {
+func NewFocusData(data dstream.Dstream, xpos []int, xn []float64) *FocusData {
 
 	return &FocusData{
 		data:      data,
 		xpos:      xpos,
-		ypos:      ypos,
-		weightPos: -1,
 		offsetPos: -1,
 		chunk:     -1,
 		xn:        xn,
@@ -130,22 +112,19 @@ func NewFocusData(data dstream.Dstream, xpos []int, ypos int, xn []float64) *Foc
 }
 
 func (f *FocusData) Names() []string {
-
-	na := []string{"y", "x", "off"}
-	if f.weightPos != -1 {
-		na = append(na, "wgt")
-	}
-
-	return na
+	return append([]string{"x", "off"}, f.otherNames...)
 }
 
+// Offset sets the position of an offset variable, if one is present.
 func (f *FocusData) Offset(pos int) *FocusData {
 	f.offsetPos = pos
 	return f
 }
 
-func (f *FocusData) Weight(pos int) *FocusData {
-	f.weightPos = pos
+// Other provides the names of all additional variables to retain that
+// are not covariates or offsets.
+func (f *FocusData) Other(names []string) *FocusData {
+	f.otherNames = names
 	return f
 }
 
@@ -154,16 +133,38 @@ func (f *FocusData) Done() *FocusData {
 	f.Reset()
 	data := f.data
 
+	f.varpos = make(map[string]int)
+	for k, v := range data.Names() {
+		f.varpos[v] = k
+	}
+	for _, na := range f.otherNames {
+		q, ok := f.varpos[na]
+		if !ok {
+			msg := fmt.Sprintf("Variable '%s' not found\n", na)
+			panic(msg)
+		}
+		f.otherPos = append(f.otherPos, q)
+	}
+
+	f.otherData = make(map[string][][]float64)
+
 	data.Reset()
 	for data.Next() {
-		y := data.GetPos(f.ypos).([]float64)
-		n := len(y)
-		f.y = append(f.y, y)
+
+		// Get the length of the chunk
+		x := data.GetPos(f.xpos[0]).([]float64)
+		n := len(x)
+
+		// Storage for the variable being focused on
 		f.x = append(f.x, make([]float64, n))
+
+		// Storage for the combined effects of all other
+		// variables (and the actual offset if present).
 		f.offset = append(f.offset, make([]float64, n))
 
-		if f.weightPos != -1 {
-			f.w = append(f.w, make([]float64, n))
+		// Storage for all other retained variables
+		for _, na := range f.otherNames {
+			f.otherData[na] = append(f.otherData[na], make([]float64, n))
 		}
 	}
 
@@ -183,12 +184,14 @@ func (f *FocusData) Focus(fpos int, coeff []float64) {
 
 	for c := 0; data.Next(); c++ {
 
+		// Set up the offset block
 		if f.offsetPos != -1 {
 			copy(f.offset[c], data.GetPos(f.offsetPos).([]float64))
 		} else {
 			zero(f.offset[c])
 		}
 
+		// Project into the offset block
 		for j, k := range f.xpos {
 			z := data.GetPos(k).([]float64)
 			if j != fpos {
@@ -202,8 +205,9 @@ func (f *FocusData) Focus(fpos int, coeff []float64) {
 			}
 		}
 
-		if f.weightPos != -1 {
-			copy(f.w[c], data.GetPos(f.weightPos).([]float64))
+		// Handle other variables
+		for j, na := range f.otherNames {
+			copy(f.otherData[na][c], data.GetPos(f.otherPos[j]).([]float64))
 		}
 	}
 }

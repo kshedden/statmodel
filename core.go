@@ -261,6 +261,24 @@ func (s *Summary) line(c string) string {
 	return strings.Repeat(c, s.tw) + "\n"
 }
 
+// cleanTop ensures that all fields in the top part of the table have
+// the same width.
+func (s *Summary) cleanTop() {
+
+	w := len(s.Top[0])
+	for _, x := range s.Top {
+		if len(x) > w {
+			w = len(x)
+		}
+	}
+
+	for i, x := range s.Top {
+		if len(x) < w {
+			s.Top[i] = x + strings.Repeat(" ", w-len(x))
+		}
+	}
+}
+
 // Construct the upper part of the table, which contains summary
 // values for the model.
 func (s *Summary) top(gap int) string {
@@ -298,6 +316,8 @@ type Fmter func(interface{}, string) []string
 // String returns the table as a string.
 func (s *Summary) String() string {
 
+	s.cleanTop()
+
 	var tab [][]string
 	var wx []int
 	for j, c := range s.Cols {
@@ -310,9 +330,18 @@ func (s *Summary) String() string {
 		}
 	}
 
+	gap := 10
+
+	// Get the total width of the table
 	s.tw = 0
 	for _, w := range wx {
 		s.tw += w
+	}
+	if s.tw < len(s.Title) {
+		s.tw = len(s.Title)
+	}
+	if s.tw < gap+2*len(s.Top[0]) {
+		s.tw = gap + 2*len(s.Top[0])
 	}
 
 	var buf bytes.Buffer
@@ -328,7 +357,7 @@ func (s *Summary) String() string {
 	buf.Write([]byte("\n"))
 
 	buf.Write([]byte(s.line("=")))
-	buf.Write([]byte(s.top(10)))
+	buf.Write([]byte(s.top(gap)))
 	buf.Write([]byte(s.line("-")))
 
 	for j, c := range s.ColNames {
