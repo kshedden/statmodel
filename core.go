@@ -19,7 +19,20 @@ const (
 )
 
 // Parameter is the parameter of a model.
-type Parameter interface{}
+type Parameter interface {
+
+	// Get the coefficients of the covariates in the linear
+	// predictor.  The returned value should be a reference so
+	// that changes to it lead to corresponding changes in the
+	// parameter itself.
+	GetCoeff() []float64
+
+	// Set the coefficients of the covariates in the linear
+	// predictor.
+	SetCoeff([]float64)
+
+	Clone() Parameter
+}
 
 // RegFitter is a regression model that can be fit to data.
 type RegFitter interface {
@@ -304,8 +317,13 @@ func (s *Summary) String() string {
 
 	var buf bytes.Buffer
 
+	// Center the title
 	k := len(s.Title)
-	buf.Write([]byte(strings.Repeat(" ", (s.tw-k)/2)))
+	kr := (s.tw - k) / 2
+	if kr < 0 {
+		kr = 0
+	}
+	buf.Write([]byte(strings.Repeat(" ", kr)))
 	buf.Write([]byte(s.Title))
 	buf.Write([]byte("\n"))
 
