@@ -162,9 +162,10 @@ func (f *FocusData) Done() *FocusData {
 		// variables (and the actual offset if present).
 		f.offset = append(f.offset, make([]float64, n))
 
-		// Storage for all other retained variables
-		for _, na := range f.otherNames {
-			f.otherData[na] = append(f.otherData[na], make([]float64, n))
+		// Include all other retained variables (which are not
+		// changed after each refocusing operation).
+		for j, na := range f.otherNames {
+			f.otherData[na] = append(f.otherData[na], data.GetPos(f.otherPos[j]).([]float64))
 		}
 	}
 
@@ -203,11 +204,6 @@ func (f *FocusData) Focus(fpos int, coeff []float64) {
 					f.x[c][i] = u / f.xn[j]
 				}
 			}
-		}
-
-		// Handle other variables
-		for j, na := range f.otherNames {
-			copy(f.otherData[na][c], data.GetPos(f.otherPos[j]).([]float64))
 		}
 	}
 }
