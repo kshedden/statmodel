@@ -86,7 +86,6 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 	nvar := rf.NumParams()
 	m1 := model1d{rf1, param1d}
 
-	nobs := rf1.DataSet().NumObs()
 	coeff := param.GetCoeff()
 
 	// Outer coordinate descent loop.
@@ -100,7 +99,7 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 
 			// Get the new point
 			rf1.Focus(j, coeff)
-			np := opt1d(m1, nobs, coeff[j], l1wgt[j], checkstep)
+			np := opt1d(m1, coeff[j], l1wgt[j], checkstep)
 
 			// Update the change measure
 			d := math.Abs(np - coeff[j])
@@ -125,11 +124,11 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 
 // Use a local quadratic approximation, then fall back to a line
 // search if needed.
-func opt1d(m1 model1d, nobs int, coeff float64, l1wgt float64, checkstep bool) float64 {
+func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
 
 	// Quadratic approximation coefficients
-	b := -m1.Score(coeff) / float64(nobs)
-	c := -m1.Hessian(coeff) / float64(nobs)
+	b := -m1.Score(coeff)
+	c := -m1.Hessian(coeff)
 
 	// The optimum point of the quadratic approximation
 	d := b - c*coeff
@@ -155,15 +154,15 @@ func opt1d(m1 model1d, nobs int, coeff float64, l1wgt float64, checkstep bool) f
 
 	// Check whether the new point improves the target function.
 	// This check is a bit expensive and not necessary for OLS
-	f0 := -m1.LogLike(coeff)/float64(nobs) + l1wgt*math.Abs(coeff)
-	f1 := -m1.LogLike(coeff+h)/float64(nobs) + l1wgt*math.Abs(coeff+h)
+	f0 := -m1.LogLike(coeff) + l1wgt*math.Abs(coeff)
+	f1 := -m1.LogLike(coeff+h) + l1wgt*math.Abs(coeff+h)
 	if f1 <= f0+1e-10 {
 		return coeff + h
 	}
 
 	// Wrap the log-likelihood so it takes a scalar argument.
 	fw := func(z float64) float64 {
-		f := -m1.LogLike(z)/float64(nobs) + l1wgt*math.Abs(z)
+		f := -m1.LogLike(z) + l1wgt*math.Abs(z)
 		return f
 	}
 
