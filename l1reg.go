@@ -37,7 +37,7 @@ type ModelFocuser interface {
 
 	// Focus the model on the given covariate, using the given
 	// coefficients.
-	Focus(int, []float64)
+	Focus(int, []float64, float64)
 
 	// The dataset used to fit the model
 	DataSet() dstream.Dstream
@@ -72,9 +72,8 @@ func (m1 *model1d) Hessian(x float64) float64 {
 
 // FitL1Reg fits the provided L1RegFitter and returns the array of
 // parameter values.
-func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, checkstep bool) Parameter {
+func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64, checkstep, norm bool) Parameter {
 
-	tol := 1e-7
 	maxiter := 400
 
 	// A parameter for the 1-d focused model, sharing all
@@ -82,9 +81,17 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 	param1d := param.Clone()
 	param1d.SetCoeff([]float64{0})
 
-	rf1 := rf.GetFocusable()
 	nvar := rf.NumParams()
+	rf1 := rf.GetFocusable()
+	nobs := rf1.DataSet().NumObs()
 	m1 := model1d{rf1, param1d}
+
+	// Since we are using non-normalized log-likelihood, the
+	// tolerance can scale with the sample size.
+	tol := 1e-7 * float64(nobs)
+	if tol > 0.1 {
+		tol = 0.1
+	}
 
 	coeff := param.GetCoeff()
 
@@ -98,8 +105,12 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 		for j := 0; j < nvar; j++ {
 
 			// Get the new point
-			rf1.Focus(j, coeff)
-			np := opt1d(m1, coeff[j], l1wgt[j], checkstep)
+			wt := 0.0
+			if l2wgt != nil {
+				wt = l2wgt[j]
+			}
+			rf1.Focus(j, coeff, wt)
+			np := opt1d(m1, coeff[j], l1wgt[j], nobs, checkstep, norm)
 
 			// Update the change measure
 			d := math.Abs(np - coeff[j])
@@ -124,7 +135,7 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt []float64, xn []float64, c
 
 // Use a local quadratic approximation, then fall back to a line
 // search if needed.
-func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
+func opt1d(m1 model1d, coeff float64, l1wgt float64, nobs int, checkstep, norm bool) float64 {
 
 	// Quadratic approximation coefficients
 	b := -m1.Score(coeff)
@@ -167,7 +178,9 @@ func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
 	}
 
 	// Fallback for models where the loss is not quadratic
-	np := bisection(fw, coeff-1, coeff+1, 1e-4)
+	w := 1.0
+	btol := 1e-7
+	np := bisection(fw, coeff-w, coeff+w, btol)
 	return np
 }
 
@@ -179,49 +192,50 @@ func bisection(f func(float64) float64, xl, xu, tol float64) float64 {
 	// Try to find a bracket.
 	success := false
 	x0, x2 = xl, xu
-	for k := 0; k < 100; k++ {
+	x1 = (x0 + x2) / 2
+	f1 = f(x1)
+	for k := 0; k < 10; k++ {
 		f0 = f(x0)
 		f2 = f(x2)
-		x1 = (x0 + x2) / 2
-		f1 = f(x1)
 
 		if f1 < f0 && f1 < f2 {
 			success = true
 			break
 		}
-		x0 -= 1
-		x2 += 1
+		x0 = x1 - 10*(x1-x0)
+		x2 = x1 + 10*(x2-x1)
 	}
 
 	if !success {
-		msg := fmt.Sprintf("Failed to find bracket:\nx0=%f x1=%f x2=%f f0=%f f1=%f f2=%f\n", x0, x1, x2, f0, f1, f2)
-		panic(msg)
+		if f0 < f1 && f0 < f2 {
+			return x0
+		} else if f1 < f0 && f1 < f2 {
+			return x1
+		} else {
+			return x2
+		}
 	}
 
+	iter := 0
 	for x2-x0 > tol {
+		iter++
 		if x1-x0 > x2-x1 {
 			xx := (x0 + x1) / 2
 			ff := f(xx)
 			if ff < f1 {
-				x2 = x1
-				f2 = f1
-				x1 = xx
-				f1 = ff
+				x2, f2 = x1, f1
+				x1, f1 = xx, ff
 			} else {
-				x0 = xx
-				f0 = ff
+				x0, f0 = xx, ff
 			}
 		} else {
 			xx := (x1 + x2) / 2
 			ff := f(xx)
 			if ff < f1 {
-				x0 = x1
-				f0 = f1
-				x1 = xx
-				f1 = ff
+				x0, f0 = x1, f1
+				x1, f1 = xx, ff
 			} else {
-				x2 = xx
-				f2 = ff
+				x2, f2 = xx, ff
 			}
 		}
 	}

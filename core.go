@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 
 	"gonum.org/v1/gonum/mat"
@@ -223,6 +224,7 @@ func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	himat := mat.NewDense(nvar, nvar, hessi)
 	err := himat.Inverse(hmat)
 	if err != nil {
+		os.Stderr.Write([]byte("Can't invert Hessian\n"))
 		return nil, err
 	}
 	himat.Scale(-1, himat)
