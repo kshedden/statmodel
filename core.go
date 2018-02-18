@@ -96,22 +96,47 @@ func (rslt *BaseResults) Model() RegFitter {
 
 // FittedValues returns the fitted linear predictor for a regression
 // model.  If da is nil, the fitted values are based on the data used
-// to it the mode.  If da is provided it is used to produce the fitted
-// values, so must have the same columns as the training data.
+// to fit the model.  Otherwise, the provided data stream is used to
+// produce the fitted values, so it must have the same columns as the
+// training data.
 func (rslt *BaseResults) FittedValues(da dstream.Dstream) []float64 {
 
-	if da == nil {
-		da = rslt.model.DataSet()
-	}
-	fv := make([]float64, da.NumObs())
-	ii := 0
-	n := 0
+	// Training data, covariate names, and positions
+	tdat := rslt.model.DataSet()
+	tnames := tdat.Names()
+	tpos := rslt.model.Xpos()
 
-	xp := rslt.model.Xpos()
+	if da == nil {
+		// Use training data to get the fitted values
+		da = tdat
+	}
+
+	// Variable to position map for predicting data.
+	pmap := make(map[string]int)
+	for k, v := range da.Names() {
+		pmap[v] = k
+	}
+
+	// Positions of the variables in the data used to produce
+	// fitted values.
+	var ppos []int
+	for _, k := range tpos {
+		na := tnames[k]
+		pos, ok := pmap[na]
+		if !ok {
+			msg := fmt.Sprintf("Variable '%s' not found.\n", na)
+			panic(msg)
+		}
+		ppos = append(ppos, pos)
+	}
+
+	fv := make([]float64, da.NumObs())
+	var ii int
 
 	da.Reset()
 	for da.Next() {
-		for k, j := range xp {
+		var n int
+		for k, j := range ppos {
 			z := da.GetPos(j).([]float64)
 			n = len(z)
 			for i, v := range z {
