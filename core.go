@@ -257,7 +257,7 @@ func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	return hessi, nil
 }
 
-type Summary struct {
+type SummaryTable struct {
 
 	// Title
 	Title string
@@ -284,13 +284,13 @@ type Summary struct {
 
 // Draw a line constructed of the given character filling the width of
 // the table.
-func (s *Summary) line(c string) string {
+func (s *SummaryTable) line(c string) string {
 	return strings.Repeat(c, s.tw) + "\n"
 }
 
 // cleanTop ensures that all fields in the top part of the table have
 // the same width.
-func (s *Summary) cleanTop() {
+func (s *SummaryTable) cleanTop() {
 
 	w := len(s.Top[0])
 	for _, x := range s.Top {
@@ -308,7 +308,7 @@ func (s *Summary) cleanTop() {
 
 // Construct the upper part of the table, which contains summary
 // values for the model.
-func (s *Summary) top(gap int) string {
+func (s *SummaryTable) top(gap int) string {
 
 	w := []int{0, 0}
 
@@ -341,7 +341,7 @@ func (s *Summary) top(gap int) string {
 type Fmter func(interface{}, string) []string
 
 // String returns the table as a string.
-func (s *Summary) String() string {
+func (s *SummaryTable) String() string {
 
 	s.cleanTop()
 

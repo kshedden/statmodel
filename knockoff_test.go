@@ -20,7 +20,10 @@ func TestKO1(t *testing.T) {
 		[][]interface{}{[]interface{}{x1}, []interface{}{x2}, []interface{}{x3}, []interface{}{x4}},
 		[]string{"x1", "x2", "x3", "x4"})
 
-	ko := NewKnockoff(da, []string{"x1", "x2", "x3"})
+	ko, err := NewKnockoff(da, []string{"x1", "x2", "x3"})
+	if err != nil {
+		panic(err)
+	}
 	lmin := ko.lmin
 	da = dstream.Dstream(ko)
 
@@ -100,7 +103,10 @@ func TestKO2(t *testing.T) {
 		[]string{"x1", "x2", "x3", "x4"})
 
 	names := []string{"x1", "x2", "x3"}
-	ko := NewKnockoff(da, names)
+	ko, err := NewKnockoff(da, names)
+	if err != nil {
+		panic(err)
+	}
 	lmin := ko.lmin
 	da = dstream.Dstream(ko)
 

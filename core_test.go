@@ -94,8 +94,8 @@ func TestResult1(t *testing.T) {
 
 	da := data1()
 	model := &Mock{
-		da,
-		[]int{1, 2},
+		data: da,
+		xpos: []int{1, 2},
 	}
 
 	params := []float64{1, 2}

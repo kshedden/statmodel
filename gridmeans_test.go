@@ -73,4 +73,13 @@ func TestGM(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	// Test the pair contrasts.
+	c := gmr.PairContrast(0, 1, "x1")
+	if c.Records[0].Rec1 != gmr.Records[0] {
+		t.Fail()
+	}
+	if c.Records[0].Rec2 != gmr.Records[1] {
+		t.Fail()
+	}
 }

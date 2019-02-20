@@ -67,7 +67,7 @@ type Knockoff struct {
 // listed in kvars are retained but are not standardized or otherwise
 // altered.  The returned Knockoff struct value satisfies the dstream
 // interface.
-func NewKnockoff(data dstream.Dstream, kvars []string) *Knockoff {
+func NewKnockoff(data dstream.Dstream, kvars []string) (*Knockoff, error) {
 
 	// Map from variable names to column position.
 	mp := make(map[string]int)
@@ -95,16 +95,23 @@ func NewKnockoff(data dstream.Dstream, kvars []string) *Knockoff {
 		chunk:      -1,
 	}
 
-	ko.init()
-	return ko
+	err := ko.init()
+	if err != nil {
+		return nil, err
+	}
+	return ko, nil
 }
 
-func (ko *Knockoff) init() {
+func (ko *Knockoff) init() error {
 	ko.getMoments()
 	ko.getCrossProd()
 	ko.getlmin()
-	ko.setrcmat()
+	err := ko.setrcmat()
+	if err != nil {
+		return err
+	}
 	ko.setNames()
+	return nil
 }
 
 func (ko *Knockoff) CrossProd() []float64 {
@@ -230,7 +237,7 @@ func (ko *Knockoff) getlmin() {
 
 // Construct rmat and cmat.  The knockoff features are X*rmat + U*cmat
 // where X are the actual features and U are orthogonal to X.
-func (ko *Knockoff) setrcmat() {
+func (ko *Knockoff) setrcmat() error {
 
 	p := len(ko.pos)
 
@@ -239,8 +246,7 @@ func (ko *Knockoff) setrcmat() {
 	mi := mat.NewDense(p, p, nil)
 	err := mi.Inverse(ma)
 	if err != nil {
-		print("Can't invert cross product matrix\n")
-		panic(err)
+		return fmt.Errorf("Can't invert cross product matrix")
 	}
 
 	f := 2 * ko.lmin
@@ -266,7 +272,7 @@ func (ko *Knockoff) setrcmat() {
 	}
 	es := new(mat.EigenSym)
 	if !es.Factorize(am, true) {
-		panic("EigenSym!\n")
+		return fmt.Errorf("EigenSym!\n")
 	}
 	lmat := new(mat.Dense)
 	lmat.EigenvectorsSym(es)
@@ -278,7 +284,7 @@ func (ko *Knockoff) setrcmat() {
 		}
 	}
 	if floats.Min(va) < 0 {
-		panic("A matrix has negative eigenvalues\n")
+		return fmt.Errorf("A matrix has negative eigenvalues\n")
 	}
 	ko.cmat = make([]float64, p*p)
 	for i := 0; i < p; i++ {
@@ -289,17 +295,17 @@ func (ko *Knockoff) setrcmat() {
 
 	for _, v := range ko.rmat {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
-			msg := "R matrix has Inf or NaN values.\n"
-			panic(msg)
+			return fmt.Errorf("R matrix has Inf or NaN values.\n")
 		}
 	}
 
 	for _, v := range ko.cmat {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
-			msg := "C matrix has Inf or NaN values.\n"
-			panic(msg)
+			return fmt.Errorf("C matrix has Inf or NaN values.\n")
 		}
 	}
+
+	return nil
 }
 
 func (ko *Knockoff) Names() []string {
