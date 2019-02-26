@@ -15,8 +15,16 @@ import (
 type HessType int
 
 const (
-	ObsHess = iota
+	ObsHess HessType = iota
 	ExpHess
+)
+
+type ScaleType int
+
+const (
+	NoScale ScaleType = iota
+	L2Norm
+	Variance
 )
 
 // Parameter is the parameter of a model.

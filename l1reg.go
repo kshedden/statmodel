@@ -72,7 +72,8 @@ func (m1 *model1d) Hessian(x float64) float64 {
 
 // FitL1Reg fits the provided L1RegFitter and returns the array of
 // parameter values.
-func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64, checkstep, norm bool) Parameter {
+func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64,
+	checkstep bool) Parameter {
 
 	maxiter := 400
 
@@ -110,7 +111,7 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64, chec
 				wt = l2wgt[j]
 			}
 			rf1.Focus(j, coeff, wt)
-			np := opt1d(m1, coeff[j], float64(nobs)*l1wgt[j], checkstep, norm)
+			np := opt1d(m1, coeff[j], float64(nobs)*l1wgt[j], checkstep)
 
 			// Update the change measure
 			d := math.Abs(np - coeff[j])
@@ -135,7 +136,7 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64, chec
 
 // Use a local quadratic approximation, then fall back to a line
 // search if needed.
-func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep, norm bool) float64 {
+func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
 
 	// Quadratic approximation coefficients
 	b := -m1.Score(coeff)
