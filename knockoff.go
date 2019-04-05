@@ -274,8 +274,7 @@ func (ko *Knockoff) setrcmat() error {
 	if !es.Factorize(am, true) {
 		return fmt.Errorf("EigenSym!\n")
 	}
-	lmat := new(mat.Dense)
-	lmat.EigenvectorsSym(es)
+	lmat := es.VectorsTo(nil)
 	va := es.Values(nil)
 	// Clip small negative eigenvalues
 	for j := range va {
