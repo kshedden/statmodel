@@ -9,7 +9,9 @@ go:
 before_install:
  - go get gonum.org/v1/gonum/floats
  - go get gonum.org/v1/gonum/optimize
- - go get github.com/kshedden/statmodel
+ - go get github.com/kshedden/statmodel/statmodel
+ - go get github.com/kshedden/statmodel/glm
+ - go get github.com/kshedden/statmodel/duration
  - go get github.com/kshedden/dstream/dstream
  - go get github.com/kshedden/dstream/formula
 
