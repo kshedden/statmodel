@@ -1,11 +1,10 @@
-__statmodel__ is a set of type definitions and generic functions to
-support [Go](http://golang.org) packages that fit statistical models.
-It does not implement any specific statistical models.  Some other
-packages that use this package to fit specific families of statistical
-models are:
+__statmodel__ is a collection of [Go](http://golang.org) packages for fitting
+statistical models.
 
-* [goglm](http://github.com/kshedden/goglm) for Generalized Linear
+See the following packages for specific models:
+
+* [goglm](http://github.com/kshedden/statmodel/goglm) for Generalized Linear
 Models
 
-* [duration](http://github.com/kshedden/duration) for Cox proportional
+* [duration](http://github.com/kshedden/statmodel/duration) for Cox proportional
   hazards regression models
