@@ -5,17 +5,14 @@ marginal survival function, and estimation of the cumulative incidence
 function are supported.  The analysis functions accept data using the
 [dstream](http://github.com/kshedden/dstream) interface.
 
-Link to the [godoc documentation](https://godoc.org/github.com/kshedden/duration).
+The Godoc package documentation is [here](https://godoc.org/github.com/kshedden/statmodel/duration).
 
 Here is an example of a proportional hazards regression:
 
 ```
-// Provide an io.Reader to the CSV-formatted data source.
-da := dstream.FromCSV(r).AllFloat().HasHeader().Done()
-
-// Prepare a design matrix using a formula
+// data is a Dstream containing the data
 fml := "age + sex + severity + age*sex + age*severity"
-dx := formula.New(fml, dx).Keep([]string{"Entry", "Time", "Status"}).Done()
+dx := formula.New(fml, data).Keep("Entry", "Time", "Status").Done()
 da = dstream.MemCopy(dx)
 
 // Fit the model
@@ -28,5 +25,3 @@ Features
 --------
 
 * Cox model supports entry times (delayed entry) and stratification
-
-* Cox model uses the Breslow log-likelihood

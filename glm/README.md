@@ -1,11 +1,13 @@
-__goglm__ supports estimation of generalized linear models in Go.
+__glm__ supports estimation of generalized linear models in Go.
+
+The Godoc package documentation is [here](https://godoc.org/github.com/kshedden/statmodel/glm).
 
 A basic usage example is as follows:
 
 ```
-fam := goglm.NewFamily(goglm.Binomial)
+fam := glm.NewFamily(glm.BinomialFamily)
 // data is a dstream
-glm := goglm.NewGLM(data, "Y").Family(fam).Done()
+glm := glm.NewGLM(data, "Y").Family(fam).Done()
 rslt := glm.Fit()
 print(rslt.Summary().String())
 ```
