@@ -6,6 +6,9 @@ go:
  - 1.10.x
  - master
 
+script:
+ - go test ./...
+
 before_install:
  - go get gonum.org/v1/gonum/floats
  - go get gonum.org/v1/gonum/optimize
