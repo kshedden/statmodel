@@ -1,4 +1,4 @@
-package goglm
+package glm
 
 import (
 	"fmt"
