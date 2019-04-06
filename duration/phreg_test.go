@@ -11,7 +11,7 @@ import (
 	"gonum.org/v1/gonum/optimize"
 
 	"github.com/kshedden/dstream/dstream"
-	"github.com/kshedden/statmodel"
+	"github.com/kshedden/statmodel/statmodel"
 )
 
 func data1() dstream.Dstream {
