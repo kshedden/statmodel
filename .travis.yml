@@ -7,7 +7,10 @@ go:
  - master
 
 script:
- - go test ./...
+  - go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+
+notifications:
+ email: false
 
 before_install:
  - go get gonum.org/v1/gonum/floats
@@ -17,4 +20,7 @@ before_install:
  - go get github.com/kshedden/statmodel/duration
  - go get github.com/kshedden/dstream/dstream
  - go get github.com/kshedden/dstream/formula
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 
