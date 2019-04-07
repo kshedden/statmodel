@@ -187,7 +187,7 @@ func (rslt *BaseResults) StdErr() []float64 {
 		return rslt.stderr
 	}
 
-	for i, _ := range rslt.stderr {
+	for i := range rslt.stderr {
 		rslt.stderr[i] = math.Sqrt(rslt.vcov[i*p+i])
 	}
 
@@ -209,7 +209,7 @@ func (rslt *BaseResults) ZScores() []float64 {
 	}
 
 	std := rslt.StdErr()
-	for i, _ := range std {
+	for i := range std {
 		rslt.zscores[i] = rslt.params[i] / std[i]
 	}
 

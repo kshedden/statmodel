@@ -1156,7 +1156,7 @@ func (ph *PHReg) fitRegularized() *PHResults {
 
 	// Since coeff is transformed back to the original scale, we
 	// need to stop normalizing now.
-	for i, _ := range ph.xscale {
+	for i := range ph.xscale {
 		ph.xscale[i] = 1
 	}
 

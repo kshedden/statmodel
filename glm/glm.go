@@ -640,7 +640,7 @@ func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess [
 			glm.vari.Deriv(mn, vad)
 			scoreFactor(yda, mn, lderiv, va, sfac)
 
-			for i, _ := range fac {
+			for i := range fac {
 				h := va[i]*lderiv2[i] + lderiv[i]*vad[i]
 				h *= sfac[i] * fac[i]
 				if wgts != nil {
@@ -703,35 +703,35 @@ func (glm *GLM) hessXprod(xdat [][]float64, fac, wgts, hess []float64) {
 // Get a focusable version of the model, which can be projected onto
 // the coordinate axes for coordinate optimization.  Exposed for use
 // in elastic net optimization.
-func (g *GLM) GetFocusable() statmodel.ModelFocuser {
+func (glm *GLM) GetFocusable() statmodel.ModelFocuser {
 
-	other := []string{g.yname}
-	if g.weightpos != -1 {
-		other = append(other, g.weightname)
+	other := []string{glm.yname}
+	if glm.weightpos != -1 {
+		other = append(other, glm.weightname)
 	}
 
 	// Set up the focusable data.
-	fdat := statmodel.NewFocusData(g.data, g.xpos, g.xn).Other(other)
-	if g.offsetpos != -1 {
+	fdat := statmodel.NewFocusData(glm.data, glm.xpos, glm.xn).Other(other)
+	if glm.offsetpos != -1 {
 		// An actual offset, to be combined if present with
 		// the offset that results by combining the non-focus
 		// covariates.
-		fdat.Offset(g.offsetpos)
+		fdat.Offset(glm.offsetpos)
 	}
 	fdat = fdat.Done()
 
-	newglm := NewGLM(fdat, g.yname).Family(g.fam).Link(g.link).VarFunc(g.vari).Offset("off")
-	if g.weightpos != -1 {
-		newglm = newglm.Weight(g.weightname)
-	} else if g.weightname != "" {
-		newglm = newglm.Weight(g.weightname)
+	newglm := NewGLM(fdat, glm.yname).Family(glm.fam).Link(glm.link).VarFunc(glm.vari).Offset("off")
+	if glm.weightpos != -1 {
+		newglm = newglm.Weight(glm.weightname)
+	} else if glm.weightname != "" {
+		newglm = newglm.Weight(glm.weightname)
 	}
 
-	if g.l1wgt != nil {
+	if glm.l1wgt != nil {
 		newglm = newglm.L1Weight(make([]float64, 1)) //g.l1wgt)
 	}
 
-	if g.l2wgt != nil {
+	if glm.l2wgt != nil {
 		newglm = newglm.L2Weight(make([]float64, 1)) //g.l2wgt)
 	}
 
@@ -745,12 +745,12 @@ func (g *GLM) GetFocusable() statmodel.ModelFocuser {
 // through dthe offset.  The method is exposed for use in elastic net
 // fitting, but is unlikely to be useful for ordinary users.  Can only be
 // called on a focusable version of the model value.
-func (g *GLM) Focus(j int, coeff []float64, l2wgt float64) {
+func (glm *GLM) Focus(j int, coeff []float64, l2wgt float64) {
 
-	g.data.(*statmodel.FocusData).Focus(j, coeff)
+	glm.data.(*statmodel.FocusData).Focus(j, coeff)
 
 	if l2wgt > 0 {
-		g.l2wgt[0] = l2wgt
+		glm.l2wgt[0] = l2wgt
 	}
 }
 
@@ -777,7 +777,7 @@ func (glm *GLM) fitRegularized() *GLMResults {
 	// Since coeff is transformed back to the original scale, we
 	// need to stop normalizing (else EstimateScale and other
 	// post-fit quantities will be wrong).
-	for i, _ := range glm.xn {
+	for i := range glm.xn {
 		glm.xn[i] = 1
 	}
 
@@ -1040,14 +1040,14 @@ func resize(x []float64, n int) []float64 {
 
 // zero sets all elements of the slice to 0
 func zero(x []float64) {
-	for i, _ := range x {
+	for i := range x {
 		x[i] = 0
 	}
 }
 
 // one sets all elements of the slice to 1
 func one(x []float64) {
-	for i, _ := range x {
+	for i := range x {
 		x[i] = 1
 	}
 }

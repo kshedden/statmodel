@@ -208,7 +208,7 @@ func (sf *SurvfuncRight) eventstats() {
 	// Get the sorted distinct times (event or censoring)
 	sf.times = make([]float64, len(sf.total))
 	var i int
-	for t, _ := range sf.total {
+	for t := range sf.total {
 		sf.times[i] = t
 		i++
 	}
@@ -271,7 +271,7 @@ func (sf *SurvfuncRight) fit() {
 
 	sf.survProb = make([]float64, len(sf.times))
 	x := float64(1)
-	for i, _ := range sf.times {
+	for i := range sf.times {
 		x *= 1 - sf.nEvents[i]/sf.nRisk[i]
 		sf.survProb[i] = x
 	}
@@ -279,14 +279,14 @@ func (sf *SurvfuncRight) fit() {
 	sf.survProbSE = make([]float64, len(sf.times))
 	x = 0
 	if sf.weightpos == -1 {
-		for i, _ := range sf.times {
+		for i := range sf.times {
 			d := sf.nEvents[i]
 			n := sf.nRisk[i]
 			x += d / (n * (n - d))
 			sf.survProbSE[i] = math.Sqrt(x) * sf.survProb[i]
 		}
 	} else {
-		for i, _ := range sf.times {
+		for i := range sf.times {
 			d := sf.nEvents[i]
 			n := sf.nRisk[i]
 			x += d / (n * n)
