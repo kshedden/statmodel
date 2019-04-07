@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/kshedden/statmodel.svg?branch=master)](https://travis-ci.com/kshedden/statmodel)
+
 __statmodel__ is a collection of [Go](http://golang.org) packages for fitting
 statistical models.
 
