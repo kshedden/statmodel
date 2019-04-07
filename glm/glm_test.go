@@ -128,7 +128,7 @@ type testprob struct {
 	scaletype  []statmodel.ScaleType
 }
 
-var glm_tests []testprob = []testprob{
+var glmTests []testprob = []testprob{
 	{
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
@@ -523,7 +523,7 @@ var glm_tests []testprob = []testprob{
 
 func TestFit(t *testing.T) {
 
-	for jd, ds := range glm_tests {
+	for jd, ds := range glmTests {
 		for js, scaletype := range ds.scaletype {
 			for jf, fmeth := range ds.fitmethods {
 

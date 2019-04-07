@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// VarianceType is sed to specify a GLM variance function.
 type VarianceType uint8
 
 const (

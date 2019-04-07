@@ -8,6 +8,7 @@ import (
 // VecFunc is a function with two float64 array arguments.
 type VecFunc func([]float64, []float64)
 
+// Link specifies a GLM link function.
 type Link struct {
 	Name string
 
@@ -28,6 +29,7 @@ type Link struct {
 	Deriv2 VecFunc
 }
 
+// LinkType is used to specify a GLM link function.
 type LinkType uint8
 
 const (
@@ -207,7 +209,7 @@ func cloglogInvFunc(x []float64, y []float64) {
 
 func genPowFunc(p float64, s float64) VecFunc {
 	return func(x []float64, y []float64) {
-		for i, _ := range x {
+		for i := range x {
 			y[i] = s * math.Pow(x[i], p)
 		}
 	}

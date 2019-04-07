@@ -366,7 +366,6 @@ func TestPhregRegularized(t *testing.T) {
 		if !floats.EqualApprox(rslt.Params(), pe[j], 1e-5) {
 			fmt.Printf("j=%d\nFound=%v\n", j, rslt.Params())
 			fmt.Printf("Expected=%v\n", pe[j])
-			panic("")
 			t.Fail()
 		}
 		_ = rslt.Summary().String()

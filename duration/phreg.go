@@ -324,7 +324,7 @@ func (ph *PHReg) doScale() {
 		case statmodel.Variance:
 			ph.xscale[j] = math.Sqrt(ph.xscale[j] / n)
 		default:
-			panic("Unkown scale type")
+			panic("Unknown scale type")
 		}
 
 		if ph.xscale[j] == 0 {
@@ -938,7 +938,7 @@ func (ph *PHReg) failMessage(optrslt *optimize.Result) {
 		// Track the stratum sizes
 		stSize = append(stSize, float64(len(time)))
 
-		// Get the mean entry time per stratum if avaiable.
+		// Get the mean entry time per stratum if available.
 		if ph.entryvarpos != -1 {
 			entry := ph.data.GetPos(ph.entryvarpos).([]float64)
 			e = floats.Sum(entry) / float64(len(entry))

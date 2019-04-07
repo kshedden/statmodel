@@ -97,11 +97,11 @@ func (glm *GLM) fitIRLS(start []float64, maxiter int) []float64 {
 
 			// Create weights for WLS
 			if wgt != nil {
-				for i, _ := range yda {
+				for i := range yda {
 					irlsw[i] = wgt[i] / (lderiv[i] * lderiv[i] * va[i])
 				}
 			} else {
-				for i, _ := range yda {
+				for i := range yda {
 					irlsw[i] = 1 / (lderiv[i] * lderiv[i] * va[i])
 				}
 			}
@@ -244,7 +244,7 @@ func (glm *GLM) startingMu(y []float64, mn []float64) {
 	} else {
 		q = floats.Sum(y) / float64(len(y))
 	}
-	for i, _ := range mn {
+	for i := range mn {
 		mn[i] = (y[i] + q) / 2
 		if mn[i] < 0.1 {
 			mn[i] = 0.1

@@ -35,7 +35,7 @@ type CumincRight struct {
 	// Times at which events occur, sorted.
 	Times []float64
 
-	// The number of occurences of events of each type at each
+	// The number of occurrences of events of each type at each
 	// time in Times.
 	Events [][]float64
 
@@ -103,17 +103,17 @@ func NewCumincRight(data dstream.Dstream, timevar, statusvar string) *CumincRigh
 }
 
 // Weights specifies a variable that povides case weights.
-func (c *CumincRight) Weights(weightvar string) *CumincRight {
+func (ci *CumincRight) Weights(weightvar string) *CumincRight {
 
 	var ok bool
-	c.weightPos, ok = c.varPos[weightvar]
+	ci.weightPos, ok = ci.varPos[weightvar]
 	if !ok {
 		msg := fmt.Sprintf("Cannot find weight variable '%s'\n", weightvar)
 		panic(msg)
 	}
-	c.weightVar = weightvar
+	ci.weightVar = weightvar
 
-	return c
+	return ci
 }
 
 // Entry specifies a variable that provides entry times.
@@ -191,7 +191,7 @@ func (ci *CumincRight) eventstats() {
 	// Get the sorted times (event or censoring)
 	ci.Times = make([]float64, len(ci.total))
 	var i int
-	for t, _ := range ci.total {
+	for t := range ci.total {
 		ci.Times[i] = t
 		i++
 	}
@@ -231,7 +231,7 @@ func (ci *CumincRight) fitall() {
 	ci.ProbsAll = make([]float64, len(ci.Times))
 
 	x := float64(1)
-	for i, _ := range ci.Times {
+	for i := range ci.Times {
 		x *= 1 - ci.EventsAll[i]/ci.NRisk[i]
 		ci.ProbsAll[i] = x
 	}
@@ -274,7 +274,7 @@ func (ci *CumincRight) fitse() {
 		var x1, x2, x3, x4, x5, x6 float64
 		se := make([]float64, len(ci.Times))
 
-		for i, _ := range ci.Times {
+		for i := range ci.Times {
 
 			q := ci.Probs[k][i]
 			da := ci.EventsAll[i]
@@ -306,7 +306,7 @@ func (ci *CumincRight) fitse() {
 	}
 }
 
-// compress removes times where no events occured.
+// compress removes times where no events occurred.
 func (ci *CumincRight) compress() {
 
 	var ix []int
@@ -328,6 +328,7 @@ func (ci *CumincRight) compress() {
 	}
 }
 
+// Done completes construction and computes all results.
 func (ci *CumincRight) Done() *CumincRight {
 	ci.init()
 	ci.scanData()

@@ -110,7 +110,7 @@ func TestKO2(t *testing.T) {
 	lmin := ko.lmin
 	da = dstream.Dstream(ko)
 
-	// Need to cpoy this out because the results are random.
+	// Need to copy this out because the results are random.
 	da.Reset()
 	da = dstream.MemCopy(da)
 

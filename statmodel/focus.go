@@ -96,8 +96,6 @@ func (f *FocusData) GetPos(pos int) interface{} {
 	default:
 		return f.otherData[f.otherNames[pos-2]][f.chunk]
 	}
-
-	return nil
 }
 
 func NewFocusData(data dstream.Dstream, xpos []int, xn []float64) *FocusData {

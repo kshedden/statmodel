@@ -9,37 +9,39 @@ import (
 )
 
 func data1() dstream.Dstream {
-	y := []interface{}{
-		[]float64{0, 1, 3, 2, 1, 1, 0},
+	x := [][]interface{}{
+		{
+			[]float64{0, 1, 3, 2, 1, 1, 0},
+		},
+		{
+			[]float64{1, 1, 1, 1, 1, 1, 1},
+		},
+		{
+			[]float64{4, 1, -1, 3, 5, -5, 3},
+		},
 	}
-	x1 := []interface{}{
-		[]float64{1, 1, 1, 1, 1, 1, 1},
-	}
-	x2 := []interface{}{
-		[]float64{4, 1, -1, 3, 5, -5, 3},
-	}
-	dat := [][]interface{}{y, x1, x2}
 	na := []string{"y", "x1", "x2"}
-	da := dstream.NewFromArrays(dat, na)
+	da := dstream.NewFromArrays(x, na)
 	return da
 }
 
 func data2() dstream.Dstream {
-	y := []interface{}{
-		[]float64{0, 0, 1, 0, 1, 0, 0},
+	x := [][]interface{}{
+		{
+			[]float64{0, 0, 1, 0, 1, 0, 0},
+		},
+		{
+			[]float64{1, 1, 1, 1, 1, 1, 1},
+		},
+		{
+			[]float64{4, 1, -1, 3, 5, -5, 3},
+		},
+		{
+			[]float64{1, -1, 1, 1, 2, 5, -1},
+		},
 	}
-	x1 := []interface{}{
-		[]float64{1, 1, 1, 1, 1, 1, 1},
-	}
-	x2 := []interface{}{
-		[]float64{4, 1, -1, 3, 5, -5, 3},
-	}
-	x3 := []interface{}{
-		[]float64{1, -1, 1, 1, 2, 5, -1},
-	}
-	dat := [][]interface{}{y, x1, x2, x3}
 	na := []string{"y", "x1", "x2", "x3"}
-	da := dstream.NewFromArrays(dat, na)
+	da := dstream.NewFromArrays(x, na)
 	return da
 }
 
@@ -112,7 +114,7 @@ func TestResult1(t *testing.T) {
 
 	f := func(x interface{}) {
 		z := x.([]float64)
-		for i, _ := range z {
+		for i := range z {
 			z[i] = 2 * z[i]
 		}
 	}

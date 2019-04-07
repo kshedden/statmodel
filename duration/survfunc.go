@@ -28,7 +28,7 @@ type SurvfuncRight struct {
 	timeVar string
 
 	// The name of a variable containing the status indicator,
-	// which is 1 if the event occured at the time given by
+	// which is 1 if the event occurred at the time given by
 	// TimeVar, and 0 otherwise.  This is optional, and is assumed
 	// to be identically equal to 1 if not present.
 	statusVar string
@@ -243,7 +243,7 @@ func (sf *SurvfuncRight) eventstats() {
 	}
 }
 
-// compress removes times where no events occured.
+// compress removes times where no events occurred.
 func (sf *SurvfuncRight) compress() {
 
 	var ix []int

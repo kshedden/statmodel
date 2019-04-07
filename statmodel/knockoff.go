@@ -486,7 +486,7 @@ type KnockoffResult struct {
 	// The coefficicents for the actual variables
 	params []float64
 
-	// The knockoff statisitcs
+	// The knockoff statistics
 	wstat []float64
 
 	// Indicator that the Knockoff+ method was used for FDR calculation
