@@ -12,15 +12,24 @@ import (
 	"github.com/kshedden/dstream/dstream"
 )
 
+// HessType indicates the type of a Hessian matrix for a log-likelihood.
 type HessType int
 
+// ObsHess (observed Hessian) and ExpHess (expected Hessian) are the two type of log-likelihood
+// Hessian matrices
 const (
 	ObsHess HessType = iota
 	ExpHess
 )
 
+// ScaleType defines the way that the covariates are scaled prior to fitting a model.  This
+// scaling is hidden from the caller, the results are back-transformed after fitting.
 type ScaleType int
 
+// NoScale indicates that covariates are not internally scaled prior to fitting, L2Norm
+// indicates that each covariate is scaled to have unit L2Norm prior to fitting, and Variance
+// indicates that each covariate is scaled to have unit variance prior to fitting.  L2Norm
+// and Variance scaling is not performed for covariates that do not vary (i.e. an intercept).
 const (
 	NoScale ScaleType = iota
 	L2Norm
@@ -40,6 +49,7 @@ type Parameter interface {
 	// predictor.
 	SetCoeff([]float64)
 
+	// Clone creates a deep copy of the Parameter struct.
 	Clone() Parameter
 }
 
@@ -66,6 +76,7 @@ type RegFitter interface {
 	Hessian(Parameter, HessType, []float64)
 }
 
+// BaseResultser is a fitted model that can produce results (parameter estimates, etc.).
 type BaseResultser interface {
 	Model() RegFitter
 	Names() []string
@@ -77,6 +88,7 @@ type BaseResultser interface {
 	PValues() []float64
 }
 
+// BaseResults contains the results after fitting a model to data.
 type BaseResults struct {
 	model   RegFitter
 	loglike float64
@@ -88,6 +100,7 @@ type BaseResults struct {
 	pvalues []float64
 }
 
+// NewBaseResults returns a BaseResults corresponding to the given fitted model.
 func NewBaseResults(model RegFitter, loglike float64, params []float64, xnames []string, vcov []float64) BaseResults {
 	return BaseResults{
 		model:   model,
@@ -98,6 +111,7 @@ func NewBaseResults(model RegFitter, loglike float64, params []float64, xnames [
 	}
 }
 
+// Model produces the model value used to produce the results.
 func (rslt *BaseResults) Model() RegFitter {
 	return rslt.model
 }
@@ -157,22 +171,28 @@ func (rslt *BaseResults) FittedValues(da dstream.Dstream) []float64 {
 	return fv
 }
 
+// Names returns the covariate names for the variables in the model.
 func (rslt *BaseResults) Names() []string {
 	return rslt.xnames
 }
 
+// Params returns the point estimates for the parameters in the model.
 func (rslt *BaseResults) Params() []float64 {
 	return rslt.params
 }
 
+// VCov returns the sampling variance/covariance model for the parameters in the model.
+// The matrix is vetorized to one dimension.
 func (rslt *BaseResults) VCov() []float64 {
 	return rslt.vcov
 }
 
+// LogLike returns the log-likelihood or objective function value for the fitted model.
 func (rslt *BaseResults) LogLike() float64 {
 	return rslt.loglike
 }
 
+// StdErr returns the standard errors for the parameters in the model.
 func (rslt *BaseResults) StdErr() []float64 {
 
 	// No vcov, no standard error
@@ -194,6 +214,7 @@ func (rslt *BaseResults) StdErr() []float64 {
 	return rslt.stderr
 }
 
+// ZScores returns the Z-scores (the parameter estimates divided by the standard errors).
 func (rslt *BaseResults) ZScores() []float64 {
 
 	// No vcov, no z-scores
@@ -220,6 +241,8 @@ func normcdf(x float64) float64 {
 	return 0.5 * math.Erfc(-x/math.Sqrt(2))
 }
 
+// PValues returns the p-values for the null hypothesis that each parameter's population
+// value is equal to zero.
 func (rslt *BaseResults) PValues() []float64 {
 
 	// No vcov, no p-values
@@ -247,6 +270,7 @@ func negative(x []float64) {
 	}
 }
 
+// GetVcov returns the sampling variance/covariance matrix for the parameter estimates.
 func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	nvar := model.NumParams()
 	n2 := nvar * nvar
@@ -265,6 +289,7 @@ func GetVcov(model RegFitter, params Parameter) ([]float64, error) {
 	return hessi, nil
 }
 
+// SummaryTable holds the summary values for a fitted model.
 type SummaryTable struct {
 
 	// Title
