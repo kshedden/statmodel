@@ -117,17 +117,17 @@ func (ci *CumincRight) Weights(weightvar string) *CumincRight {
 }
 
 // Entry specifies a variable that provides entry times.
-func (c *CumincRight) Entry(entryvar string) *CumincRight {
+func (ci *CumincRight) Entry(entryvar string) *CumincRight {
 
 	var ok bool
-	c.entryPos, ok = c.varPos[entryvar]
+	ci.entryPos, ok = ci.varPos[entryvar]
 	if !ok {
 		msg := fmt.Sprintf("Cannot find entry variable '%s'\n", entryvar)
 		panic(msg)
 	}
-	c.entryVar = entryvar
+	ci.entryVar = entryvar
 
-	return c
+	return ci
 }
 
 func (ci *CumincRight) init() {

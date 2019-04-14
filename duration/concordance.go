@@ -54,6 +54,7 @@ func (c *Concordance) NumPair(npair int) *Concordance {
 	return c
 }
 
+// Done signals that the Concordance value has been built and now can be fit.
 func (c *Concordance) Done() *Concordance {
 
 	// Sort everything by time

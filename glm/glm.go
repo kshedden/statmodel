@@ -15,7 +15,7 @@ import (
 	"github.com/kshedden/statmodel/statmodel"
 )
 
-// GLM describes a generalized linear model.
+// GLM represents a generalized linear model.
 type GLM struct {
 	data dstream.Dstream
 
@@ -107,8 +107,7 @@ func (p *GLMParams) Clone() statmodel.Parameter {
 	}
 }
 
-// ReportProgress asks that a progress report be printed after each
-// iteration.
+// Log takes a Logger value that will be used to log the results of the fit.
 func (glm *GLM) Log(log *log.Logger) *GLM {
 	glm.log = log
 	return glm
@@ -700,9 +699,8 @@ func (glm *GLM) hessXprod(xdat [][]float64, fac, wgts, hess []float64) {
 	wg.Wait()
 }
 
-// Get a focusable version of the model, which can be projected onto
-// the coordinate axes for coordinate optimization.  Exposed for use
-// in elastic net optimization.
+// GetFocusable returns a focusable version of the model.
+// This is exposed for use in elastic net optimization.
 func (glm *GLM) GetFocusable() statmodel.ModelFocuser {
 
 	other := []string{glm.yname}

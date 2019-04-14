@@ -7,7 +7,7 @@ import (
 )
 
 // FocusData is a Dstream that collapses a dataset by linear reduction
-// over all but one covariate.  Its main use is in coordinate
+// over all but one variable.  Its main use is in coordinate
 // optimization, e.g. for elastic net regression.
 type FocusData struct {
 
@@ -48,27 +48,33 @@ type FocusData struct {
 	chunk int
 }
 
+// Close does nothing, it is provided so that FocusData satisfies the dstream interface.
 func (f *FocusData) Close() {
 	// Do nothing
 }
 
+// NumObs returns the number of variables in the dstream.
 func (f *FocusData) NumObs() int {
 	return f.data.NumObs()
 }
 
+// NumVar returns the number of variables
 func (f *FocusData) NumVar() int {
 	return 2 + len(f.otherNames)
 }
 
+// Reset sets the dstream so that reading starts from the beginning.
 func (f *FocusData) Reset() {
 	f.chunk = -1
 }
 
+// Next advances the dstream to the next chunk.
 func (f *FocusData) Next() bool {
 	f.chunk++
 	return f.chunk < len(f.x)
 }
 
+// Get returns the data slice for the given variable name at the current chunk.
 func (f *FocusData) Get(na string) interface{} {
 
 	switch {
@@ -86,6 +92,7 @@ func (f *FocusData) Get(na string) interface{} {
 	}
 }
 
+// GetPos returns the data slice at position pos for the current chunk.
 func (f *FocusData) GetPos(pos int) interface{} {
 
 	switch {
@@ -98,6 +105,9 @@ func (f *FocusData) GetPos(pos int) interface{} {
 	}
 }
 
+// NewFocusData constructs a focusable version od a dstream.  The data dstream
+// variables in positions xpos can be focused based on coefficients provided
+// to the Focus method.  These variables must be of type float64.
 func NewFocusData(data dstream.Dstream, xpos []int, xn []float64) *FocusData {
 
 	return &FocusData{
@@ -109,6 +119,7 @@ func NewFocusData(data dstream.Dstream, xpos []int, xn []float64) *FocusData {
 	}
 }
 
+// Names returns the names of the variables in the dstream.
 func (f *FocusData) Names() []string {
 	return append([]string{"x", "off"}, f.otherNames...)
 }
@@ -126,6 +137,8 @@ func (f *FocusData) Other(names []string) *FocusData {
 	return f
 }
 
+// Done indicates that the FocusData dstream has been configured and is
+// ready for use.
 func (f *FocusData) Done() *FocusData {
 
 	f.Reset()
@@ -176,6 +189,7 @@ func zero(x []float64) {
 	}
 }
 
+// Focus sets the offset variable to hold a given linear combination of the other variables.
 func (f *FocusData) Focus(fpos int, coeff []float64) {
 
 	data := f.data
