@@ -295,6 +295,7 @@ func (sf *SurvfuncRight) fit() {
 	}
 }
 
+// Done indicates that the survival function has been configured and can now be fit.
 func (sf *SurvfuncRight) Done() *SurvfuncRight {
 	sf.init()
 	sf.scanData()
@@ -304,6 +305,7 @@ func (sf *SurvfuncRight) Done() *SurvfuncRight {
 	return sf
 }
 
+// SurvfuncRightPlotter is used to plot a survival function.
 type SurvfuncRightPlotter struct {
 	pts []plotter.XYs
 	plt *plot.Plot
@@ -316,6 +318,7 @@ type SurvfuncRightPlotter struct {
 	height vg.Length
 }
 
+// NewSurvfuncRightPlotter returns a default SurvfuncRightPlotter.
 func NewSurvfuncRightPlotter() *SurvfuncRightPlotter {
 
 	sp := &SurvfuncRightPlotter{
@@ -332,16 +335,19 @@ func NewSurvfuncRightPlotter() *SurvfuncRightPlotter {
 	return sp
 }
 
+// SurvfuncRightPlotter sets the width of the survival function plot.
 func (sp *SurvfuncRightPlotter) Width(w float64) *SurvfuncRightPlotter {
 	sp.width = vg.Length(w)
 	return sp
 }
 
+// SurvfuncRightPlotter sets the height of the survival function plot.
 func (sp *SurvfuncRightPlotter) Height(h float64) *SurvfuncRightPlotter {
 	sp.height = vg.Length(h)
 	return sp
 }
 
+// Add plots a given survival function to the plot.
 func (sp *SurvfuncRightPlotter) Add(sf *SurvfuncRight, label string) *SurvfuncRightPlotter {
 
 	ti := sf.Time()
@@ -407,10 +413,12 @@ func (sp *SurvfuncRightPlotter) Plot() *SurvfuncRightPlotter {
 	return sp
 }
 
+// GetPlotStruct returns the plotting structure for this plot.
 func (sp *SurvfuncRightPlotter) GetPlotStruct() *plot.Plot {
 	return sp.plt
 }
 
+// Save writes the plot to the given file.
 func (sp *SurvfuncRightPlotter) Save(fname string) {
 
 	if err := sp.plt.Save(sp.width*vg.Inch, sp.height*vg.Inch, fname); err != nil {

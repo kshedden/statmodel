@@ -121,7 +121,7 @@ type PHReg struct {
 	done bool
 }
 
-// The number of parameters (regression coefficients).
+// NumParams returns the number of model parameters (regression coefficients).
 func (ph *PHReg) NumParams() int {
 	return len(ph.xpos)
 }
@@ -154,13 +154,13 @@ func (ph *PHReg) CovariateScale(scaletype statmodel.ScaleType) *PHReg {
 	return ph
 }
 
-// The name of an offset variable
+// Offset sets the name of an offset variable.
 func (ph *PHReg) Offset(off string) *PHReg {
 	ph.offsetvar = off
 	return ph
 }
 
-// The positions of the covariates in the model's data..
+// Xpos return the positions of the covariates in the model's dstream.
 func (ph *PHReg) Xpos() []int {
 	return ph.xpos
 }
@@ -1068,10 +1068,10 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 	return results, nil
 }
 
-// Get a focusable version of the model, which can be projected onto
-// the coordinate axes for coordinate optimization.  It is exposed for
-// use in elastic net optimization, but unlikely to be useful to
-// ordinary users.
+// GetFocusable gets a focusable version of the model, which can be
+// projected onto the coordinate axes for coordinate optimization.
+// It is exposed for use in elastic net optimization, but unlikely
+// to be useful to ordinary users.
 func (ph *PHReg) GetFocusable() statmodel.ModelFocuser {
 
 	other := []string{ph.timevar, ph.statusvar}

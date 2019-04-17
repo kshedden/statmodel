@@ -70,6 +70,8 @@ type CumincRight struct {
 	varPos map[string]int
 }
 
+// NewCumincRight creates a CumincRight value that can be used to estimate
+// the cumulative incidence function from the given data.
 func NewCumincRight(data dstream.Dstream, timevar, statusvar string) *CumincRight {
 
 	m := make(map[string]int)
