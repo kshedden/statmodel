@@ -7,6 +7,7 @@ import (
 // VarianceType is sed to specify a GLM variance function.
 type VarianceType uint8
 
+// BinomialVar, etc. indicate the GLM variance types.
 const (
 	BinomialVar VarianceType = iota
 	IdentityVar

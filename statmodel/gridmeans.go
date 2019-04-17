@@ -88,6 +88,7 @@ func (a byMean) Len() int           { return len(a) }
 func (a byMean) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byMean) Less(i, j int) bool { return a[i].Mean < a[j].Mean }
 
+// GridMeanResult is the result of a grid mean calculation.
 type GridMeanResult struct {
 	Records []*GMrecord
 	p       int
@@ -127,11 +128,11 @@ func (gn *GMname) String(fm map[string]string) string {
 // variable names to Sprintf format strings for the corresponding variable values,
 // it may be passed as nil and defaults will be used.  mnf and sef are Sprintf
 // format strings for the fitted means and standard errors.
-func (gmt *GridMeanResult) Summary(fm map[string]string, mnf, sef string) string {
+func (gmr *GridMeanResult) Summary(fm map[string]string, mnf, sef string) string {
 
 	var labels []string
 	mx := 0
-	for _, r := range gmt.Records {
+	for _, r := range gmr.Records {
 		a := r.Name.String(fm)
 		labels = append(labels, a)
 		if len(a) > mx {
@@ -167,7 +168,7 @@ func (gmt *GridMeanResult) Summary(fm map[string]string, mnf, sef string) string
 	var s []string
 	h := fmt.Sprintf(fmt.Sprintf("%%-%ds %%%ds %%%ds", mx, mnw, sew), "Group", "Mean  ", "SE  ")
 	s = append(s, h)
-	for _, gr := range gmt.Records {
+	for _, gr := range gmr.Records {
 		s = append(s, gr.String(tpx, fm))
 	}
 

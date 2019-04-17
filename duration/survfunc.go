@@ -335,13 +335,13 @@ func NewSurvfuncRightPlotter() *SurvfuncRightPlotter {
 	return sp
 }
 
-// SurvfuncRightPlotter sets the width of the survival function plot.
+// Width sets the width of the survival function plot.
 func (sp *SurvfuncRightPlotter) Width(w float64) *SurvfuncRightPlotter {
 	sp.width = vg.Length(w)
 	return sp
 }
 
-// SurvfuncRightPlotter sets the height of the survival function plot.
+// Height sets the height of the survival function plot.
 func (sp *SurvfuncRightPlotter) Height(h float64) *SurvfuncRightPlotter {
 	sp.height = vg.Length(h)
 	return sp
@@ -386,6 +386,7 @@ func (sp *SurvfuncRightPlotter) Add(sf *SurvfuncRight, label string) *SurvfuncRi
 	return sp
 }
 
+// Plot constructs the plot.
 func (sp *SurvfuncRightPlotter) Plot() *SurvfuncRightPlotter {
 
 	sp.plt.Y.Min = 0
