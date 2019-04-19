@@ -38,7 +38,7 @@ func TestGM(t *testing.T) {
 
 	fml := "x1 + x2 + x1*x2"
 	dbx := formula.New(fml, da).Done()
-	db := dstream.MemCopy(dbx)
+	db := dstream.MemCopy(dbx, false)
 
 	model := &Mock{
 		data: da,

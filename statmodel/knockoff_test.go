@@ -86,7 +86,7 @@ func TestKO1(t *testing.T) {
 		// static arrays.
 		if r == 1 {
 			da.Reset()
-			da = dstream.MemCopy(dstream.Dstream(da))
+			da = dstream.MemCopy(dstream.Dstream(da), false)
 		}
 	}
 }
@@ -111,8 +111,7 @@ func TestKO2(t *testing.T) {
 	da = dstream.Dstream(ko)
 
 	// Need to copy this out because the results are random.
-	da.Reset()
-	da = dstream.MemCopy(da)
+	da = dstream.MemCopy(da, true)
 
 	for r := 0; r < 3; r++ {
 

@@ -31,7 +31,7 @@ func data1() dstream.Dstream {
 
 	b := bytes.NewBuffer([]byte(data))
 	da := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da = dstream.MemCopy(da)
+	da = dstream.MemCopy(da, false)
 
 	return da
 }
@@ -57,7 +57,7 @@ func data2() dstream.Dstream {
 
 	b := bytes.NewBuffer([]byte(data))
 	da := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da = dstream.MemCopy(da)
+	da = dstream.MemCopy(da, false)
 	da = dstream.Convert(da, "Stratum", dstream.Uint64)
 	da = dstream.Regroup(da, "Stratum", true)
 	da = dstream.DropCols(da, "Stratum")
@@ -84,7 +84,7 @@ func data3() dstream.Dstream {
 
 	b := bytes.NewBuffer([]byte(data))
 	da := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da = dstream.MemCopy(da)
+	da = dstream.MemCopy(da, false)
 	return da
 }
 
@@ -109,7 +109,7 @@ func data4() dstream.Dstream {
 
 	b := bytes.NewBuffer([]byte(data))
 	da := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da = dstream.MemCopy(da)
+	da = dstream.MemCopy(da, false)
 
 	return da
 }
@@ -453,11 +453,11 @@ func TestWeights(t *testing.T) {
 
 	b := bytes.NewBuffer([]byte(data1))
 	da1 := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da1 = dstream.MemCopy(da1)
+	da1 = dstream.MemCopy(da1, false)
 
 	b = bytes.NewBuffer([]byte(data2))
 	da2 := dstream.FromCSV(b).TypeConf(tc).HasHeader().Done()
-	da2 = dstream.MemCopy(da2)
+	da2 = dstream.MemCopy(da2, false)
 
 	ph1 := NewPHReg(da1, "Time", "Status").Weight("W").Done()
 	ph2 := NewPHReg(dstream.DropCols(da2, "W"), "Time", "Status").Done()
