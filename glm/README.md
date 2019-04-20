@@ -2,7 +2,9 @@ __glm__ supports estimation of generalized linear models in Go.
 
 The Godoc package documentation is [here](https://godoc.org/github.com/kshedden/statmodel/glm).
 
-See the [examples] directory for examples, producing results such as [this](examples/nhames.md).
+See the [examples](http://github.com/kshedden/statmodel/tree/master/glm/examples)
+directory for examples, producing results such as
+[this](http://github.com/kshedden/statmodel/tree/master/glm/examples/nhanes.md).
 
 A basic usage example is as follows:
 
