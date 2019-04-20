@@ -157,13 +157,15 @@ zero penalty for the intercept.
 	f2 := dstream.MemCopy(f1, false)
 
 	wt := 0.01
-	l1wgt := []float64{0}
-	for i := 0; i < 6; i++ {
-		l1wgt = append(l1wgt, wt)
+	l1pen := make(map[string]float64)
+	for _, v := range f2.Names() {
+		if v != "icept" {
+			l1pen[v] = wt
+		}
 	}
 
 	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).L1Weight(l1wgt).CovariateScale(statmodel.L2Norm).Done()
+	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).L1Penalty(l1pen).CovariateScale(statmodel.L2Norm).Done()
 
 	rslt := glm.Fit()
 
@@ -273,11 +275,11 @@ variables.
 	f2 := dstream.MemCopy(f1, false)
 	f3 := dstream.DropNA(f2)
 
-	l1wgt := []float64{0, 1, 0}
-	l2wgt := []float64{0.01, 0.01, 0.01}
+	l1pen := map[string]float64{"RIAGENDR": 1}
+	l2pen := map[string]float64{"RIAGENDR": 0.01, "RIDAGEYR": 0.01}
 
 	fam := glm.NewFamily(glm.BinomialFamily)
-	glm := glm.NewGLM(f3, "BP").Family(fam).L1Weight(l1wgt).L2Weight(l2wgt).CovariateScale(statmodel.L2Norm).Done()
+	glm := glm.NewGLM(f3, "BP").Family(fam).L1Penalty(l1pen).L2Penalty(l2pen).CovariateScale(statmodel.L2Norm).Done()
 	rslt := glm.Fit()
 	smry := rslt.Summary()
 

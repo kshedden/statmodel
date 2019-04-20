@@ -27,10 +27,10 @@ type Knockoff struct {
 	nvarSource int
 
 	// Map from variable names to column position
-	vpos map[string]int
+	varpos map[string]int
 
 	// Positions of the variables in the source data to knockoff
-	pos []int
+	kopos []int
 
 	// The means of the variables being knocked-off.
 	mean []float64
@@ -62,12 +62,12 @@ type Knockoff struct {
 
 // NewKnockoff creates a knockoff data stream from the given source
 // data stream. A knockoff variable is constructed for each variable
-// in 'kvars'.  All knockoff variables (both the original and the
+// in 'kovars'.  All knockoff variables (both the original and the
 // knockoff version of the variable) are standardized.  Variables not
-// listed in kvars are retained but are not standardized or otherwise
+// listed in kovars are retained but are not standardized or otherwise
 // altered.  The returned Knockoff struct value satisfies the dstream
 // interface.
-func NewKnockoff(data dstream.Dstream, kvars []string) (*Knockoff, error) {
+func NewKnockoff(data dstream.Dstream, kovars []string) (*Knockoff, error) {
 
 	// Map from variable names to column position.
 	mp := make(map[string]int)
@@ -77,21 +77,21 @@ func NewKnockoff(data dstream.Dstream, kvars []string) (*Knockoff, error) {
 
 	// Get the positions of the features to be analyzed via
 	// knockoff.
-	var pos []int
-	for _, na := range kvars {
+	var kopos []int
+	for _, na := range kovars {
 		q, ok := mp[na]
 		if !ok {
 			msg := fmt.Sprintf("Variable '%s' not found\n", na)
 			panic(msg)
 		}
-		pos = append(pos, q)
+		kopos = append(kopos, q)
 	}
 
 	ko := &Knockoff{
 		data:       data,
-		pos:        pos,
+		kopos:      kopos,
 		nvarSource: data.NumVar(),
-		bdat:       make([][]float64, len(pos)),
+		bdat:       make([][]float64, len(kopos)),
 		chunk:      -1,
 	}
 
@@ -126,14 +126,14 @@ func (ko *Knockoff) CrossProdMinEig() float64 {
 // variables.
 func (ko *Knockoff) getMoments() {
 
-	p := len(ko.pos)
+	p := len(ko.kopos)
 
 	// Get the means of the knockoff variables.
 	n := 0
 	ko.mean = make([]float64, p)
 	ko.data.Reset()
 	for ko.data.Next() {
-		for i, j := range ko.pos {
+		for i, j := range ko.kopos {
 			x := ko.data.GetPos(j).([]float64)
 			ko.mean[i] += floats.Sum(x)
 			if i == 0 {
@@ -149,7 +149,7 @@ func (ko *Knockoff) getMoments() {
 	ko.scale = make([]float64, p)
 	ko.data.Reset()
 	for ko.data.Next() {
-		for i, j := range ko.pos {
+		for i, j := range ko.kopos {
 			x := ko.data.GetPos(j).([]float64)
 			for k := range x {
 				u := x[k] - ko.mean[i]
@@ -165,7 +165,7 @@ func (ko *Knockoff) getMoments() {
 	for j, s := range ko.scale {
 		if s == 0 || math.IsNaN(s) || math.IsInf(s, 0) {
 			msg := fmt.Sprintf("Variable '%s' has zero variance or Inf/NaN values.",
-				ko.data.Names()[ko.pos[j]])
+				ko.data.Names()[ko.kopos[j]])
 			panic(msg)
 		}
 	}
@@ -174,7 +174,7 @@ func (ko *Knockoff) getMoments() {
 // Get the cross product matrix, pooling over all chunks.
 func (ko *Knockoff) getCrossProd() {
 
-	p := len(ko.pos)
+	p := len(ko.kopos)
 	cpr := make([]float64, p*p)
 	ko.nobs = ko.nobs[0:0]
 
@@ -183,7 +183,7 @@ func (ko *Knockoff) getCrossProd() {
 
 		// Get the variables for this chunk
 		var vax [][]float64
-		for _, j := range ko.pos {
+		for _, j := range ko.kopos {
 			vax = append(vax, ko.data.GetPos(j).([]float64))
 		}
 
@@ -224,7 +224,7 @@ func (ko *Knockoff) getCrossProd() {
 // Get the minimum eigenvalue of the cross product matrix.
 func (ko *Knockoff) getlmin() {
 
-	p := len(ko.pos)
+	p := len(ko.kopos)
 	es := new(mat.EigenSym)
 	ok := es.Factorize(mat.NewSymDense(p, ko.cpr), false)
 	if !ok {
@@ -239,7 +239,7 @@ func (ko *Knockoff) getlmin() {
 // where X are the actual features and U are orthogonal to X.
 func (ko *Knockoff) setrcmat() error {
 
-	p := len(ko.pos)
+	p := len(ko.kopos)
 
 	// Inverse of the cross product matrix
 	ma := mat.NewDense(p, p, ko.cpr)
@@ -307,6 +307,7 @@ func (ko *Knockoff) setrcmat() error {
 	return nil
 }
 
+// Names returns the variable names for the dstream.
 func (ko *Knockoff) Names() []string {
 	return ko.names
 }
@@ -321,20 +322,21 @@ func (ko *Knockoff) setNames() {
 	na := ko.data.Names()
 	var nak []string
 
-	for _, j := range ko.pos {
+	for _, j := range ko.kopos {
 		nak = append(nak, na[j]+"_ko")
 	}
 
 	ko.names = append(ko.names, na...)
 	ko.names = append(ko.names, nak...)
 
-	vpos := make(map[string]int)
+	varpos := make(map[string]int)
 	for k, v := range nak {
-		vpos[v] = k
+		varpos[v] = k
 	}
-	ko.vpos = vpos
+	ko.varpos = varpos
 }
 
+// GetPos returns the data for the jth variable in the dstream.
 func (ko *Knockoff) GetPos(j int) interface{} {
 	p := ko.nvarSource
 	if j < p {
@@ -347,7 +349,7 @@ func (ko *Knockoff) GetPos(j int) interface{} {
 		m := 0.0
 		s := 1.0
 		f := false
-		for i, k := range ko.pos {
+		for i, k := range ko.kopos {
 			if j == k {
 				m = ko.mean[i]
 				s = ko.scale[i]
@@ -366,8 +368,9 @@ func (ko *Knockoff) GetPos(j int) interface{} {
 	}
 }
 
+// Get returns the data for the variable with the given name.
 func (ko *Knockoff) Get(name string) interface{} {
-	pos, ok := ko.vpos[name]
+	pos, ok := ko.varpos[name]
 	if !ok {
 		msg := fmt.Sprintf("Variable '%s' not found\n", name)
 		panic(msg)
@@ -420,6 +423,8 @@ func (ko *Knockoff) orthog(ma *mat.Dense) *mat.Dense {
 	return u
 }
 
+// Next advances the dstream to the next chunk and returns true, or returns
+// false if the dstream has been fully read.
 func (ko *Knockoff) Next() bool {
 
 	ko.chunk++
@@ -428,7 +433,7 @@ func (ko *Knockoff) Next() bool {
 	}
 
 	var vars [][]float64
-	for _, j := range ko.pos {
+	for _, j := range ko.kopos {
 		vars = append(vars, ko.data.GetPos(j).([]float64))
 	}
 
@@ -463,16 +468,19 @@ func (ko *Knockoff) Next() bool {
 	return true
 }
 
+// Close returns the underlying reader for the dstream.
 func (ko *Knockoff) Close() {
 	ko.data.Close()
 }
 
+// NumObs returns the number of observations in the dstream.
 func (ko *Knockoff) NumObs() int {
 	return ko.data.NumObs()
 }
 
+// NumVar returns the number of variables in the dstream.
 func (ko *Knockoff) NumVar() int {
-	return len(ko.pos) + ko.nvarSource
+	return len(ko.kopos) + ko.nvarSource
 }
 
 // KnockoffResult contains the results of fitting a regression model

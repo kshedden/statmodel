@@ -50,13 +50,15 @@ type GLM struct {
 	// Starting values, optional
 	start []float64
 
-	// L1 (lasso) penalty weight.  FitMethod is ignored if
-	// non-zero.
-	l1wgt []float64
+	// L1 (Lasso) penalty weights, optional.  FitMethod is
+	// ignored if present.
+	l1wgtMap map[string]float64
+	l1wgt    []float64
 
-	// L2 (ridge) penalty weights, optional.  Must fit using
-	// Gradient method if present.
-	l2wgt []float64
+	// L2 (ridge) penalty weights, optional.  FitMethod is
+	// ignored if present.
+	l2wgtMap map[string]float64
+	l2wgt    []float64
 
 	// The L2 norm of every covariate.  If norm=true,
 	// calculations are done on normalized covariates.
@@ -196,19 +198,19 @@ func (glm *GLM) Family(fam *Family) *GLM {
 	return glm
 }
 
-// L2Weight set the L2 weights used for ridge-regularization.  When
-// using L2 weights it is advisable to call ScaleType as well so that
-// the weights have equal impacts on the covariates.
-func (glm *GLM) L2Weight(l2wgt []float64) *GLM {
-	glm.l2wgt = l2wgt
+// L2Penalty set the L2 weights used for ridge regularization.  When
+// using L2 penalization, it is advisable to call CovariateScale as
+// well, so that the penalization has equal impacts on the covariates.
+func (glm *GLM) L2Penalty(l2wgt map[string]float64) *GLM {
+	glm.l2wgtMap = l2wgt
 	return glm
 }
 
-// L1Weight set the L1 weights used for ridge-regularization.  When
-// using L1 weights it is advisable to call ScaleType as well so that
-// the weights have equal impacts on the covariates.
-func (glm *GLM) L1Weight(l1wgt []float64) *GLM {
-	glm.l1wgt = l1wgt
+// L1Penalty set the L1 weights used for Lasso regularization.  When
+// using L1 penbalization, it is advisable to call CovariateScale as
+// well, so that the weights have equal impacts on the covariates.
+func (glm *GLM) L1Penalty(l1wgt map[string]float64) *GLM {
+	glm.l1wgtMap = l1wgt
 	return glm
 }
 
@@ -331,6 +333,7 @@ func (glm *GLM) Done() *GLM {
 	}
 
 	glm.findvars()
+	glm.setupPenalty()
 	glm.doScale()
 	glm.setup()
 
@@ -341,6 +344,27 @@ func (glm *GLM) Done() *GLM {
 	glm.check()
 
 	return glm
+}
+
+func (glm *GLM) setupPenalty() {
+
+	names := glm.data.Names()
+
+	f := func(mp map[string]float64) []float64 {
+		wvec := make([]float64, len(glm.xpos))
+		for i, j := range glm.xpos {
+			wvec[i] = mp[names[j]]
+		}
+		return wvec
+	}
+
+	if glm.l1wgtMap != nil {
+		glm.l1wgt = f(glm.l1wgtMap)
+	}
+
+	if glm.l2wgtMap != nil {
+		glm.l2wgt = f(glm.l2wgtMap)
+	}
 }
 
 // doScale calculates covariate scaling factors.
@@ -726,11 +750,11 @@ func (glm *GLM) GetFocusable() statmodel.ModelFocuser {
 	}
 
 	if glm.l1wgt != nil {
-		newglm = newglm.L1Weight(make([]float64, 1)) //g.l1wgt)
+		newglm = newglm.L1Penalty(make(map[string]float64))
 	}
 
 	if glm.l2wgt != nil {
-		newglm = newglm.L2Weight(make([]float64, 1)) //g.l2wgt)
+		newglm = newglm.L2Penalty(make(map[string]float64))
 	}
 
 	newglm.Done()

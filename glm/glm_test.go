@@ -122,8 +122,8 @@ type testprob struct {
 	vcov       []float64
 	ll         float64
 	scale      float64
-	l2wgt      []float64
-	l1wgt      []float64
+	l2wgt      map[string]float64
+	l1wgt      map[string]float64
 	fitmethods []string
 	scaletype  []statmodel.ScaleType
 }
@@ -437,7 +437,7 @@ var glmTests []testprob = []testprob{
 		weight:     true,
 		params:     []float64{0.256717, -0.035340},
 		scale:      1.0,
-		l2wgt:      []float64{0.1, 0.1},
+		l2wgt:      map[string]float64{"x1": 0.1, "x2": 0.1},
 		fitmethods: []string{"Gradient"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -448,7 +448,7 @@ var glmTests []testprob = []testprob{
 		weight:     true,
 		params:     []float64{-0.921685, 0.032864, 0.064429},
 		scale:      1.0,
-		l2wgt:      []float64{0.2, 0.2, 0.2},
+		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0.2, "x3": 0.2},
 		fitmethods: []string{"Gradient"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -459,7 +459,7 @@ var glmTests []testprob = []testprob{
 		weight:     true,
 		params:     []float64{-0.640768, 0.092631, 0.175485},
 		scale:      1.0,
-		l2wgt:      []float64{0.2, 0.2, 0.2},
+		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0.2, "x3": 0.2},
 		fitmethods: []string{"Gradient"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -470,7 +470,7 @@ var glmTests []testprob = []testprob{
 		weight:     true,
 		params:     []float64{-0.659042, 0.097647, 0.187009},
 		scale:      1.0,
-		l2wgt:      []float64{0.2, 0, 0.1},
+		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0, "x3": 0.1},
 		fitmethods: []string{"Gradient"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -481,7 +481,7 @@ var glmTests []testprob = []testprob{
 		weight:     false,
 		params:     []float64{-0.465363, 0, 0},
 		scale:      1.0,
-		l1wgt:      []float64{0.1, 0.1, 0.1},
+		l1wgt:      map[string]float64{"x1": 0.1, "x2": 0.1, "x3": 0.1},
 		fitmethods: []string{"Coordinate"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -492,7 +492,7 @@ var glmTests []testprob = []testprob{
 		weight:     false,
 		params:     []float64{-0.737198, 0.024176, 0.017089},
 		scale:      1.0,
-		l1wgt:      []float64{0.05, 0.05, 0.05},
+		l1wgt:      map[string]float64{"x1": 0.05, "x2": 0.05, "x3": 0.05},
 		fitmethods: []string{"Coordinate"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -503,7 +503,7 @@ var glmTests []testprob = []testprob{
 		weight:     false,
 		params:     []float64{-0.89149010, 0.0312166489, 0.0485293176},
 		scale:      1.0,
-		l1wgt:      []float64{0.01, 0.01, 0.01},
+		l1wgt:      map[string]float64{"x1": 0.01, "x2": 0.01, "x3": 0.01},
 		fitmethods: []string{"Coordinate"},
 		scaletype:  []statmodel.ScaleType{statmodel.L2Norm},
 	},
@@ -514,8 +514,8 @@ var glmTests []testprob = []testprob{
 		weight:     false,
 		params:     []float64{-0.988257, 0.078329, 0.121922},
 		scale:      1.0,
-		l1wgt:      []float64{0.02, 0.02, 0.02},
-		l2wgt:      []float64{0.02, 0.02, 0.02},
+		l1wgt:      map[string]float64{"x1": 0.02, "x2": 0.02, "x3": 0.02},
+		l2wgt:      map[string]float64{"x1": 0.02, "x2": 0.02, "x3": 0.02},
 		fitmethods: []string{"Coordinate"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
@@ -540,8 +540,12 @@ func TestFit(t *testing.T) {
 
 				glm = glm.Family(ds.family).FitMethod(fmeth)
 
+				if ds.l1wgt != nil {
+					glm = glm.L1Penalty(ds.l1wgt)
+				}
+
 				if ds.l2wgt != nil {
-					glm = glm.L2Weight(ds.l2wgt)
+					glm = glm.L2Penalty(ds.l2wgt)
 				}
 
 				glm = glm.CovariateScale(scaletype)
@@ -550,11 +554,8 @@ func TestFit(t *testing.T) {
 					glm = glm.Start(ds.start)
 				}
 
-				if len(ds.l1wgt) > 0 {
-					glm = glm.L1Weight(ds.l1wgt)
-				}
-
 				glm = glm.Done()
+
 				result := glm.Fit()
 
 				if !floats.EqualApprox(result.Params(), ds.params, 1e-5) {
