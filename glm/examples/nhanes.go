@@ -1,5 +1,3 @@
-package main
-
 // Some examples of fitting GLM's to NHANES data.
 //
 // To prepare, download the demographics (DEMO_G.XPT) and blood
@@ -23,6 +21,8 @@ package main
 // ds = pd.merge(ds1, ds2, left_on="SEQN", right_on="SEQN")
 //
 // ds.to_csv("nhanes.csv.gz", index=False, compression="gzip")
+
+package main
 
 import (
 	"compress/gzip"
@@ -56,9 +56,6 @@ func getData() dstream.Dstream {
 
 	dst := dstream.FromCSV(gid).TypeConf(tc).ChunkSize(100).HasHeader().Done()
 	dsc := dstream.MemCopy(dst, false)
-
-	dsc.Reset()
-	dsc.Next()
 
 	return dsc
 }
@@ -232,7 +229,6 @@ the dependent variable, and gender and age as predictors.
 
 	dp := getData()
 
-	dp.Reset()
 	dp = dstream.Generate(dp, "BP", hbp, dstream.Float64)
 	dp = dstream.MemCopy(dp, false)
 
@@ -265,7 +261,6 @@ variables.
 
 	dp := getData()
 
-	dp.Reset()
 	dp = dstream.Generate(dp, "BP", hbp, dstream.Float64)
 	dp = dstream.MemCopy(dp, false)
 
