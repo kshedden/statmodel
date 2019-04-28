@@ -4,7 +4,7 @@ The Godoc package documentation is [here](https://godoc.org/github.com/kshedden/
 
 See the [examples](http://github.com/kshedden/statmodel/tree/master/glm/examples)
 directory for examples, producing results such as
-[this](http://github.com/kshedden/statmodel/tree/master/glm/examples/nhanes.md).
+[this](http://github.com/kshedden/statmodel/tree/master/glm/examples/nhanes/nhanes.md).
 
 A basic usage example is as follows:
 

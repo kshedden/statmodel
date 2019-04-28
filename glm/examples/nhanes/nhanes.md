@@ -1,4 +1,4 @@
-
+```
 Linear regression (ordinary least squares) for systolic blood pressure,
 using two predictor variables: gender (RIAGENDR) and age (RIDAGEYR).
 Gender is treated as a quantitative variable and is coded as 1 for
@@ -6,9 +6,9 @@ males and 2 for females.
 
                    Generalized linear model analysis
 =======================================================================
-Family:   Gaussian            Link:     Identity  
-Variance: Constant            Num obs:  47292     
-Scale:    227.879549          
+Family:   Gaussian            Link:     Identity
+Variance: Constant            Num obs:  47292
+Scale:    227.879549
 -----------------------------------------------------------------------
 Variable    Parameter        SE       LCB       UCB   Z-score   P-value
 -----------------------------------------------------------------------
@@ -25,9 +25,9 @@ race/multiracial) as the reference category.
 
                     Generalized linear model analysis
 =========================================================================
-Family:   Gaussian            Link:     Identity  
-Variance: Constant            Num obs:  47292     
-Scale:    223.349181          
+Family:   Gaussian            Link:     Identity
+Variance: Constant            Num obs:  47292
+Scale:    223.349181
 -------------------------------------------------------------------------
   Variable    Parameter        SE       LCB       UCB   Z-score   P-value
 -------------------------------------------------------------------------
@@ -49,9 +49,9 @@ and age as covariates.  Ethnicity is a categorical covariate with level
 
                       Generalized linear model analysis
 =============================================================================
-Family:   Gaussian            Link:     Identity  
-Variance: Constant            Num obs:  47292     
-Scale:    221.549555          
+Family:   Gaussian            Link:     Identity
+Variance: Constant            Num obs:  47292
+Scale:    221.549555
 -----------------------------------------------------------------------------
       Variable    Parameter        SE       LCB       UCB   Z-score   P-value
 -----------------------------------------------------------------------------
@@ -73,9 +73,9 @@ zero penalty for the intercept.
 
         Generalized linear model analysis
 ==================================================
-Family:   Gaussian            Link:     Identity  
-Variance: Constant            Num obs:  6756      
-Scale:    230.973959          
+Family:   Gaussian            Link:     Identity
+Variance: Constant            Num obs:  6756
+Scale:    230.973959
 --------------------------------------------------
   Variable    Parameter
 --------------------------------------------------
@@ -95,9 +95,9 @@ using a square root transform in the formula.
 
                     Generalized linear model analysis
 ==========================================================================
-Family:   Gaussian            Link:     Identity  
-Variance: Constant            Num obs:  47292     
-Scale:    228.468869          
+Family:   Gaussian            Link:     Identity
+Variance: Constant            Num obs:  47292
+Scale:    228.468869
 --------------------------------------------------------------------------
    Variable    Parameter        SE       LCB       UCB   Z-score   P-value
 --------------------------------------------------------------------------
@@ -117,9 +117,9 @@ the dependent variable, and gender and age as predictors.
 
                    Generalized linear model analysis
 =======================================================================
-Family:   Binomial          Link:     Logit   
-Variance: Binomial          Num obs:  102718  
-Scale:    1.000000          
+Family:   Binomial          Link:     Logit
+Variance: Binomial          Num obs:  102718
+Scale:    1.000000
 -----------------------------------------------------------------------
 Variable    Parameter        SE       LCB       UCB   Z-score   P-value
 -----------------------------------------------------------------------
@@ -131,9 +131,9 @@ RIDAGEYR       0.0663    0.0016    0.0631    0.0696   40.6338    0.0000
 
          Generalized linear model analysis
 ===================================================
-Family:   Binomial          Link:     Logit   
-Variance: Binomial          Num obs:  102718  
-Scale:    1.000000          
+Family:   Binomial          Link:     Logit
+Variance: Binomial          Num obs:  102718
+Scale:    1.000000
 ---------------------------------------------------
 Variable    Parameter       LCB       UCB   P-value
 ---------------------------------------------------
@@ -151,9 +151,9 @@ variables.
 
       Generalized linear model analysis
 ==============================================
-Family:   Binomial          Link:     Logit   
-Variance: Binomial          Num obs:  242788  
-Scale:    1.000000          
+Family:   Binomial          Link:     Logit
+Variance: Binomial          Num obs:  242788
+Scale:    1.000000
 ----------------------------------------------
 Variable    Parameter
 ----------------------------------------------
@@ -161,5 +161,4 @@ icept         -0.0001
 RIAGENDR       0.0000
 RIDAGEYR      -0.0000
 ----------------------------------------------
-
-
+```
