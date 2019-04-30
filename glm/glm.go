@@ -942,13 +942,12 @@ func (glm *GLM) fitGradient(start []float64) ([]float64, float64) {
 		Func: func(x []float64) float64 {
 			return -glm.LogLike(&GLMParams{x, 1}, false)
 		},
-		Grad: func(grad, x []float64) []float64 {
+		Grad: func(grad, x []float64) {
 			if len(grad) != len(x) {
 				grad = make([]float64, len(x))
 			}
 			glm.Score(&GLMParams{x, 1}, grad)
 			floats.Scale(-1, grad)
-			return grad
 		},
 	}
 

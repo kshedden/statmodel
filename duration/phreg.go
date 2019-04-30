@@ -1011,13 +1011,12 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 		Func: func(x []float64) float64 {
 			return -ph.LogLike(&PHParameter{x}, false)
 		},
-		Grad: func(grad, x []float64) []float64 {
+		Grad: func(grad, x []float64) {
 			if len(grad) != len(x) {
 				grad = make([]float64, len(x))
 			}
 			ph.Score(&PHParameter{x}, grad)
 			negative(grad)
-			return grad
 		},
 	}
 
