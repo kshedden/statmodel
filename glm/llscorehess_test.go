@@ -12,7 +12,6 @@ import (
 type ptlsh struct {
 	family  *Family
 	link    *Link
-	alpha   float64
 	data    dstream.Dstream
 	weight  bool
 	off     bool
@@ -123,7 +122,6 @@ var pq = []ptlsh{
 	},
 	{
 		family: NewNegBinomFamily(1.5, NewLink(LogLink)),
-		alpha:  1.5,
 		weight: true,
 		data:   data4(true),
 		params: []float64{1, 0, -1},
@@ -174,7 +172,7 @@ func TestLLScoreHess(t *testing.T) {
 		score := make([]float64, m)
 		hess := make([]float64, m*m)
 
-		ll := glm.LogLike(&GLMParams{ps.params, 1})
+		ll := glm.LogLike(&GLMParams{ps.params, 1}, true)
 		if !scalarClose(ll, ps.ll, 1e-5) {
 			fmt.Printf("LogLike %d:\n", pj)
 			t.Fail()

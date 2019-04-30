@@ -40,6 +40,7 @@ const (
 	CloglogLink
 	RecipLink
 	RecipSquaredLink
+	PowerLink
 )
 
 // NewLink returns a link function object corresponding to the given
@@ -120,20 +121,38 @@ var recipSquaredLink = Link{
 	Deriv2:   genPowFunc(-4, 6),
 }
 
+// NewPowerLink returns the power link eta = mu^pw.  If
+// pw = 0 returns the log link.
+func NewPowerLink(pw float64) *Link {
+
+	if pw == 0 {
+		return &logLink
+	}
+
+	return &Link{
+		Name:     fmt.Sprintf("PowerLink(%f)", pw),
+		TypeCode: PowerLink,
+		Link:     genPowFunc(pw, 1),
+		InvLink:  genPowFunc(1/pw, 1),
+		Deriv:    genPowFunc(pw-1, pw),
+		Deriv2:   genPowFunc(pw-2, pw*(pw-1)),
+	}
+}
+
 func logFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = math.Log(x[i])
 	}
 }
 
 func logDerivFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = 1 / x[i]
 	}
 }
 
 func logDeriv2Func(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = -1 / (x[i] * x[i])
 	}
 }

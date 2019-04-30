@@ -74,7 +74,7 @@ func (m *Mock) DataSet() dstream.Dstream {
 	return m.data
 }
 
-func (m *Mock) LogLike(params Parameter) float64 {
+func (m *Mock) LogLike(params Parameter, exact bool) float64 {
 	return 0
 }
 

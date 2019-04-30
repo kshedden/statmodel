@@ -11,10 +11,7 @@ import (
 )
 
 func scalarClose(x, y, eps float64) bool {
-	if math.Abs(x-y) > eps {
-		return false
-	}
-	return true
+	return math.Abs(x-y) <= eps
 }
 
 func data1(wgt bool) dstream.Dstream {
@@ -111,11 +108,11 @@ func data5(wgt bool) dstream.Dstream {
 
 // A test problem
 type testprob struct {
+	title      string
 	family     *Family
 	data       dstream.Dstream
 	weight     bool
 	offset     bool
-	alpha      float64
 	start      []float64
 	params     []float64
 	stderr     []float64
@@ -126,10 +123,16 @@ type testprob struct {
 	l1wgt      map[string]float64
 	fitmethods []string
 	scaletype  []statmodel.ScaleType
+	paramstol  float64
+	stderrtol  float64
+	vcovtol    float64
+	logliketol float64
+	scaletol   float64
 }
 
 var glmTests []testprob = []testprob{
 	{
+		title:      "Gaussian 1",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data1(true),
@@ -143,6 +146,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Gaussian 2",
 		family: NewFamily(GaussianFamily),
 		start:  nil,
 		data:   data2(true),
@@ -158,6 +162,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Gaussian 3",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data3(true),
@@ -171,6 +176,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Poisson 1",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data1(true),
@@ -184,6 +190,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Poisson 2",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
 		data:   data2(true),
@@ -199,6 +206,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Poisson 3",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data3(true),
@@ -212,6 +220,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Binomial 1",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
 		data:   data2(true),
@@ -226,6 +235,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Binomial 2",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data3(true),
@@ -239,6 +249,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Binomial 3",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
 		data:   data2(false),
@@ -253,6 +264,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Binomial 4",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data3(false),
@@ -265,6 +277,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Poisson 4",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data1(false),
@@ -277,6 +290,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Poisson 5",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
 		data:   data2(false),
@@ -291,6 +305,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Poisson 6",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data3(false),
@@ -303,6 +318,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Gaussian 4",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data1(false),
@@ -315,6 +331,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Gaussian 5",
 		family: NewFamily(GaussianFamily),
 		start:  nil,
 		data:   data2(false),
@@ -329,6 +346,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:      "Gaussian 6",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data3(false),
@@ -341,6 +359,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Inverse Gaussian 1",
 		family: NewFamily(InvGaussianFamily),
 		start:  []float64{0.1, 0, 0},
 		data:   data4(true),
@@ -356,6 +375,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
+		title:  "Gamma 1",
 		family: NewFamily(GammaFamily),
 		start:  []float64{0.3, 0.0, 0.0},
 		data:   data4(true),
@@ -371,6 +391,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
+		title:  "QuasiPoisson 1",
 		family: NewFamily(QuasiPoissonFamily),
 		start:  nil,
 		data:   data2(true),
@@ -386,6 +407,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
+		title:  "Negative binomial 1",
 		family: NewNegBinomFamily(1, NewLink(LogLink)),
 		start:  nil,
 		data:   data4(true),
@@ -401,8 +423,8 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
+		title:  "Negative binomial 2",
 		family: NewNegBinomFamily(1.5, NewLink(LogLink)),
-		alpha:  1.5,
 		start:  nil,
 		data:   data4(true),
 		weight: true,
@@ -417,6 +439,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
+		title:      "Poisson 7",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data5(true),
@@ -431,6 +454,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
+		title:      "Poisson 8",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data1(true),
@@ -442,6 +466,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Poisson 9",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data2(true),
@@ -453,6 +478,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Binomial 6",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(true),
@@ -464,6 +490,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Binomial 7",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(true),
@@ -475,6 +502,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Binomial 8",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -486,6 +514,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Binomial 9",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -497,6 +526,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
+		title:      "Binomial 10",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -508,6 +538,7 @@ var glmTests []testprob = []testprob{
 		scaletype:  []statmodel.ScaleType{statmodel.L2Norm},
 	},
 	{
+		title:      "Binomial 11",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -519,16 +550,51 @@ var glmTests []testprob = []testprob{
 		fitmethods: []string{"Coordinate"},
 		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
+	{
+		title:      "Tweedie 1",
+		family:     NewTweedieFamily(1.5, NewLink(LogLink)),
+		start:      nil,
+		data:       data1(false),
+		weight:     false,
+		params:     []float64{0.22297879, -0.09520094},
+		stderr:     []float64{0.3885426, 0.1102231},
+		ll:         -11.33792,
+		scale:      1.043098,
+		vcov:       []float64{0.15096534, -0.01102984, -0.01102984, 0.01214913},
+		l1wgt:      nil,
+		l2wgt:      nil,
+		fitmethods: []string{"IRLS", "Coordinate"},
+		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
+	},
+	{
+		title:  "Tweedie 2",
+		family: NewTweedieFamily(1.75, NewLink(LogLink)),
+		start:  nil,
+		data:   data2(false),
+		weight: false,
+		params: []float64{-1.78192221, 0.05615625, 0.31635418},
+		stderr: []float64{1.3368212, 0.3106755, 0.5459943},
+		ll:     -8.484231,
+		scale:  3.465428,
+		vcov: []float64{1.7870908, -0.27012970, -0.5472654, -0.2701297, 0.09651928, 0.1062641,
+			-0.5472654, 0.10626409, 0.2981098},
+		vcovtol:    1e-3,
+		paramstol:  1e-3,
+		stderrtol:  1e-3,
+		l1wgt:      nil,
+		l2wgt:      nil,
+		fitmethods: []string{"IRLS", "Coordinate"},
+		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
+	},
 }
 
 func TestFit(t *testing.T) {
 
-	for jd, ds := range glmTests {
-		for js, scaletype := range ds.scaletype {
-			for jf, fmeth := range ds.fitmethods {
+	for _, ds := range glmTests {
+		for _, scaletype := range ds.scaletype {
+			for _, fmeth := range ds.fitmethods {
 
-				var glm *GLM
-				glm = NewGLM(ds.data, "y")
+				glm := NewGLM(ds.data, "y")
 
 				if ds.weight {
 					glm = glm.Weight("w")
@@ -558,14 +624,39 @@ func TestFit(t *testing.T) {
 
 				result := glm.Fit()
 
-				if !floats.EqualApprox(result.Params(), ds.params, 1e-5) {
-					fmt.Printf("params failed %d %d %d:\n", jd, js, jf)
-					fmt.Printf("%v\n", result.Params())
+				if ds.paramstol == 0 {
+					ds.paramstol = 1e-5
+				}
+
+				if ds.stderrtol == 0 {
+					ds.stderrtol = 1e-5
+				}
+
+				if ds.vcovtol == 0 {
+					ds.vcovtol = 1e-5
+				}
+
+				if ds.logliketol == 0 {
+					ds.logliketol = 1e-5
+				}
+
+				if ds.scaletol == 0 {
+					ds.scaletol = 1e-5
+				}
+
+				if !floats.EqualApprox(result.Params(), ds.params, ds.paramstol) {
+					fmt.Printf("%s\n", ds.title)
+					fmt.Printf("Parameter estimates disagree:\n")
+					fmt.Printf("Expected: %v\n", ds.params)
+					fmt.Printf("Found:    %v\n", result.Params())
 					t.Fail()
 				}
 
-				if math.Abs(result.Scale()-ds.scale) > 1e-5 {
-					fmt.Printf("scale failed: %d %d %d\n", jd, js, jf)
+				if math.Abs(result.Scale()-ds.scale) > ds.scaletol {
+					fmt.Printf("%s\n", ds.title)
+					fmt.Printf("Scale estimates disagree:\n")
+					fmt.Printf("Expected: %v\n", ds.scale)
+					fmt.Printf("Found:    %v\n", result.Scale())
 					t.Fail()
 				}
 
@@ -574,18 +665,27 @@ func TestFit(t *testing.T) {
 					continue
 				}
 
-				if !scalarClose(result.LogLike(), ds.ll, 1e-5) {
-					fmt.Printf("loglike failed: %d %d %d\n", jd, js, jf)
+				if !scalarClose(result.LogLike(), ds.ll, ds.logliketol) {
+					fmt.Printf("%s\n", ds.title)
+					fmt.Printf("Loglikelihood values disagree:\n")
+					fmt.Printf("Expected: %v\n", ds.ll)
+					fmt.Printf("Found:    %v\n", result.LogLike())
 					t.Fail()
 				}
 
-				if !floats.EqualApprox(result.StdErr(), ds.stderr, 1e-5) {
-					fmt.Printf("stderr failed: %d %d %d\n", jd, js, jf)
+				if !floats.EqualApprox(result.StdErr(), ds.stderr, ds.stderrtol) {
+					fmt.Printf("%s\n", ds.title)
+					fmt.Printf("Standard errors disagree\n")
+					fmt.Printf("Expected: %v\n", ds.stderr)
+					fmt.Printf("Found:    %v\n", result.StdErr())
 					t.Fail()
 				}
 
-				if !floats.EqualApprox(result.VCov(), ds.vcov, 1e-5) {
-					fmt.Printf("vcov failed: %d %d %d\n", jd, js, jf)
+				if !floats.EqualApprox(result.VCov(), ds.vcov, ds.vcovtol) {
+					fmt.Printf("%s\n", ds.title)
+					fmt.Printf("vcov values disagree\n")
+					fmt.Printf("Expected: %v\n", ds.vcov)
+					fmt.Printf("Found:    %v\n", result.VCov())
 					t.Fail()
 				}
 

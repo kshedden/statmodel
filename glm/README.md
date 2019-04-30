@@ -1,9 +1,7 @@
-__glm__ supports estimation of generalized linear models in Go.
-
-The Godoc package documentation is [here](https://godoc.org/github.com/kshedden/statmodel/glm).
+__glm__ estimates [generalized linear models](https://en.wikipedia.org/wiki/Generalized_linear_model) (GLMs) in Go.
 
 See the [examples](http://github.com/kshedden/statmodel/tree/master/glm/examples)
-directory for examples, producing results such as
+directory for examples.  This package can be used to produce results such as
 [this](http://github.com/kshedden/statmodel/tree/master/glm/examples/nhanes/nhanes.md).
 
 A basic usage example is as follows:
@@ -49,8 +47,6 @@ Missing features
 * Performance assessments
 
 * Model diagnostics
-
-* Less-common GLM families (e.g. Tweedie)
 
 * Marginalization
 

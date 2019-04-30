@@ -392,7 +392,8 @@ func TestPhregFocus(t *testing.T) {
 
 	// Numerically calculate the score of the projected model
 	dl := 1e-7
-	scorenum := (phf.LogLike(&PHParameter{[]float64{1 + dl}}) - phf.LogLike(&PHParameter{[]float64{1}})) / dl
+	scorenum := (phf.LogLike(&PHParameter{[]float64{1 + dl}}, false) -
+		phf.LogLike(&PHParameter{[]float64{1}}, false)) / dl
 
 	// Compare the numeric and analytic scores
 	if math.Abs(score2d[0]-scorenum) > 1e-5 {

@@ -79,7 +79,23 @@ type GLM struct {
 	// Use concurrent calculations in IRLS if the chunk size is at least
 	// as large as this value.
 	concurrentIRLS int
+
+	// The approach to handling the dispersion parameter
+	dispersionMethod DispersionForm
+
+	// If the dispersion is fixed, it is held at this value.
+	dispersionValue float64
 }
+
+// DispersionForm indicates an approach for handling the dispersion parameter.
+type DispersionForm uint8
+
+const (
+	dispersionUnknown = iota
+	DispersionFixed
+	DispersionFree
+	DispersionEstimate
+)
 
 // GLMParams represents the model parameters for a GLM.
 type GLMParams struct {
@@ -195,6 +211,7 @@ func (glm *GLM) Weight(name string) *GLM {
 // Family sets the name of the GLM family variable.
 func (glm *GLM) Family(fam *Family) *GLM {
 	glm.fam = fam
+	glm.link = glm.fam.link // TODO should glm.link exist?
 	return glm
 }
 
@@ -245,6 +262,19 @@ func (glm *GLM) VarFunc(va *Variance) *GLM {
 	return glm
 }
 
+// DispersionForm sets the approach for handling the dispersion parameter.
+func (glm *GLM) DispersionForm(disp DispersionForm) *GLM {
+	glm.dispersionMethod = disp
+	return glm
+}
+
+// DispersionForm sets the approach for handling the dispersion parameter.
+func (glm *GLM) FixDispersion(disp float64) *GLM {
+	glm.dispersionValue = disp
+	glm.dispersionMethod = DispersionFixed
+	return glm
+}
+
 func (glm *GLM) findvars() {
 
 	glm.offsetpos = -1
@@ -286,6 +316,7 @@ func (glm *GLM) setup() {
 	}
 
 	if glm.vari == nil {
+		// Set a default variance function
 		switch glm.fam.TypeCode {
 		case BinomialFamily:
 			glm.vari = NewVariance(BinomialVar)
@@ -301,6 +332,8 @@ func (glm *GLM) setup() {
 			glm.vari = NewVariance(CubedVar)
 		case NegBinomFamily:
 			glm.vari = NewNegBinomVariance(glm.fam.alpha)
+		case TweedieFamily:
+			glm.vari = NewTweedieVariance(glm.fam.alpha)
 		default:
 			msg := fmt.Sprintf("Unknown GLM family: %s\n", glm.fam.Name)
 			panic(msg)
@@ -332,6 +365,7 @@ func (glm *GLM) Done() *GLM {
 		panic(msg)
 	}
 
+	glm.setupDispersion()
 	glm.findvars()
 	glm.setupPenalty()
 	glm.doScale()
@@ -344,6 +378,19 @@ func (glm *GLM) Done() *GLM {
 	glm.check()
 
 	return glm
+}
+
+func (glm *GLM) setupDispersion() {
+	if glm.dispersionMethod == dispersionUnknown {
+		glm.dispersionMethod = glm.fam.dispersionDefaultMethod
+		if glm.dispersionMethod == DispersionFixed {
+			glm.dispersionValue = glm.fam.dispersionDefaultValue
+		}
+	}
+
+	if glm.dispersionMethod == DispersionFixed && glm.dispersionValue <= 0 {
+		panic("A fixed dispersion value must be a postive number.")
+	}
 }
 
 func (glm *GLM) setupPenalty() {
@@ -449,6 +496,8 @@ func (glm *GLM) SetFamily(fam FamilyType) *GLM {
 		glm.vari = NewVariance(CubedVar)
 	case NegBinomFamily:
 		panic("GLM: can't set family to NegBinom using SetFamily")
+	case TweedieFamily:
+		// TODO something here?
 	default:
 		msg := fmt.Sprintf("Unknown GLM family: %v\n", fam)
 		panic(msg)
@@ -458,8 +507,9 @@ func (glm *GLM) SetFamily(fam FamilyType) *GLM {
 }
 
 // LogLike returns the log-likelihood value for the generalized linear
-// model at the given parameter values.
-func (glm *GLM) LogLike(params statmodel.Parameter) float64 {
+// model at the given parameter values.  If exact is false, multiplicative
+// factors that are constant with respect to the parameter may be omitted.
+func (glm *GLM) LogLike(params statmodel.Parameter, exact bool) float64 {
 
 	gpar := params.(*GLMParams)
 	coeff := gpar.coeff
@@ -501,7 +551,7 @@ func (glm *GLM) LogLike(params statmodel.Parameter) float64 {
 
 		// Update the log likelihood value
 		glm.link.InvLink(linpred, mn)
-		loglike += glm.fam.LogLike(yda, mn, wgts, scale)
+		loglike += glm.fam.LogLike(yda, mn, wgts, scale, exact)
 	}
 
 	// Account for the L2 penalty
@@ -868,7 +918,7 @@ func (glm *GLM) Fit() *GLMResults {
 	vcov, _ := statmodel.GetVcov(glm, &GLMParams{params, scale})
 	floats.Scale(scale, vcov)
 
-	ll := glm.LogLike(&GLMParams{params, scale})
+	ll := glm.LogLike(&GLMParams{params, scale}, true)
 
 	var xna []string
 	na := glm.data.Names()
@@ -890,7 +940,7 @@ func (glm *GLM) fitGradient(start []float64) ([]float64, float64) {
 
 	p := optimize.Problem{
 		Func: func(x []float64) float64 {
-			return -glm.LogLike(&GLMParams{x, 1})
+			return -glm.LogLike(&GLMParams{x, 1}, false)
 		},
 		Grad: func(grad, x []float64) []float64 {
 			if len(grad) != len(x) {
@@ -988,9 +1038,8 @@ func (glm *GLM) failMessage(optrslt *optimize.Result) {
 // given parameter values.
 func (glm *GLM) EstimateScale(params []float64) float64 {
 
-	name := strings.ToLower(glm.fam.Name)
-	if name == "binomial" || name == "poisson" {
-		return 1
+	if glm.dispersionMethod == DispersionFixed {
+		return glm.dispersionValue
 	}
 
 	nvar := glm.NumParams()

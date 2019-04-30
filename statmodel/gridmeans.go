@@ -231,10 +231,10 @@ func (pc *PairContrastResult) Summary() string {
 
 	var buf bytes.Buffer
 	for _, v := range pc.Records {
-		io.WriteString(&buf, fmt.Sprintf("%v", v))
+		_, _ = io.WriteString(&buf, fmt.Sprintf("%v", v))
 	}
 
-	return string(buf.Bytes())
+	return buf.String()
 }
 
 // PairContrast groups a GridMeanResult according to specified values of a given variable.

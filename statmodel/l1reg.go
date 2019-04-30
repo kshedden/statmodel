@@ -24,7 +24,7 @@ type FocusCreator interface {
 type ModelFocuser interface {
 
 	// Log-likelihood of the full model
-	LogLike(Parameter) float64
+	LogLike(Parameter, bool) float64
 
 	// Score function of the full model
 	Score(Parameter, []float64)
@@ -51,9 +51,9 @@ type model1d struct {
 	param Parameter
 }
 
-func (m1 *model1d) LogLike(x float64) float64 {
+func (m1 *model1d) LogLike(x float64, exact bool) float64 {
 	m1.param.SetCoeff([]float64{x})
-	return m1.model.LogLike(m1.param)
+	return m1.model.LogLike(m1.param, exact)
 }
 
 func (m1 *model1d) Score(x float64) float64 {
@@ -166,15 +166,15 @@ func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
 
 	// Check whether the new point improves the target function.
 	// This check is a bit expensive and not necessary for OLS
-	f0 := -m1.LogLike(coeff) + l1wgt*math.Abs(coeff)
-	f1 := -m1.LogLike(coeff+h) + l1wgt*math.Abs(coeff+h)
+	f0 := -m1.LogLike(coeff, false) + l1wgt*math.Abs(coeff)
+	f1 := -m1.LogLike(coeff+h, false) + l1wgt*math.Abs(coeff+h)
 	if f1 <= f0+1e-10 {
 		return coeff + h
 	}
 
 	// Wrap the log-likelihood so it takes a scalar argument.
 	fw := func(z float64) float64 {
-		f := -m1.LogLike(z) + l1wgt*math.Abs(z)
+		f := -m1.LogLike(z, false) + l1wgt*math.Abs(z)
 		return f
 	}
 

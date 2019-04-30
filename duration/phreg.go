@@ -369,7 +369,7 @@ func (ph *PHReg) setupTimes() {
 			}
 		}
 		if len(et) > 0 {
-			sort.Sort(sort.Float64Slice(et))
+			sort.Float64s(et)
 			j := 0
 			for i := 1; i < len(et); i++ {
 				if et[i] != et[j] {
@@ -495,8 +495,9 @@ func (ph *PHReg) setupCovs() {
 	}
 }
 
-// LogLike returns the log-likelihood at the given parameter value.
-func (ph *PHReg) LogLike(param statmodel.Parameter) float64 {
+// LogLike returns the log-likelihood at the given parameter value. The exact
+// parameter is ignored here.
+func (ph *PHReg) LogLike(param statmodel.Parameter, exact bool) float64 {
 
 	coeff := param.GetCoeff()
 
@@ -1008,7 +1009,7 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 
 	p := optimize.Problem{
 		Func: func(x []float64) float64 {
-			return -ph.LogLike(&PHParameter{x})
+			return -ph.LogLike(&PHParameter{x}, false)
 		},
 		Grad: func(grad, x []float64) []float64 {
 			if len(grad) != len(x) {

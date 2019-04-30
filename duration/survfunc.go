@@ -212,7 +212,7 @@ func (sf *SurvfuncRight) eventstats() {
 		sf.times[i] = t
 		i++
 	}
-	sort.Sort(sort.Float64Slice(sf.times))
+	sort.Float64s(sf.times)
 
 	// Get the weighted event count and risk set size at each time
 	// point (in same order as Times).

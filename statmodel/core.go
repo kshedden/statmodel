@@ -67,7 +67,7 @@ type RegFitter interface {
 	DataSet() dstream.Dstream
 
 	// The log-likelihood function
-	LogLike(Parameter) float64
+	LogLike(Parameter, bool) float64
 
 	// The score vector
 	Score(Parameter, []float64)
@@ -262,12 +262,6 @@ func (rslt *BaseResults) PValues() []float64 {
 	}
 
 	return rslt.pvalues
-}
-
-func negative(x []float64) {
-	for i := 0; i < len(x); i++ {
-		x[i] *= -1
-	}
 }
 
 // GetVcov returns the sampling variance/covariance matrix for the parameter estimates.

@@ -2,6 +2,7 @@ package glm
 
 import (
 	"fmt"
+	"math"
 )
 
 // VarianceType is sed to specify a GLM variance function.
@@ -142,6 +143,29 @@ func NewNegBinomVariance(alpha float64) *Variance {
 	vad := func(mn []float64, v []float64) {
 		for i, m := range mn {
 			v[i] = 1 + 2*alpha*m
+		}
+	}
+
+	return &Variance{
+		Var:   vaf,
+		Deriv: vad,
+	}
+}
+
+// NewTweedieVariance returns a variance function for the Tweedie
+// family, using the given parameter pw to determine the
+// mean/variance relationship.  The variance for mean m is m^pw.
+func NewTweedieVariance(pw float64) *Variance {
+
+	vaf := func(mn []float64, v []float64) {
+		for i, m := range mn {
+			v[i] = math.Pow(m, pw)
+		}
+	}
+
+	vad := func(mn []float64, v []float64) {
+		for i, m := range mn {
+			v[i] = pw * math.Pow(m, pw-1)
 		}
 	}
 

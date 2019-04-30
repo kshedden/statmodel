@@ -197,7 +197,7 @@ func (ci *CumincRight) eventstats() {
 		ci.Times[i] = t
 		i++
 	}
-	sort.Sort(sort.Float64Slice(ci.Times))
+	sort.Float64s(ci.Times)
 
 	// Get the weighted event count and risk set size at each time
 	// point (in same order as Times).
