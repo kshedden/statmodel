@@ -1,3 +1,7 @@
+/*
+This set of tests uses very small datasets.  The results for comparison are taken from SAS, Stata, and R.
+*/
+
 package glm
 
 import (

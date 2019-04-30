@@ -577,6 +577,7 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 
 	gpar := params.(*GLMParams)
 	coeff := gpar.coeff
+	scale := gpar.scale
 
 	var linpred, mn, deriv, va, fac, facw []float64
 
@@ -632,6 +633,10 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 				score[j] += floats.Dot(facw, xda) / glm.xn[j]
 			}
 		}
+	}
+
+	if scale != 1 {
+		floats.Scale(1/scale, score)
 	}
 
 	// Account for the L2 penalty
