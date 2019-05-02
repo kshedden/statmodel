@@ -91,7 +91,7 @@ type GLM struct {
 type DispersionForm uint8
 
 const (
-	dispersionUnknown = iota
+	dispersionUnknown DispersionForm = iota
 	DispersionFixed
 	DispersionFree
 	DispersionEstimate

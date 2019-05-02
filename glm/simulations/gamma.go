@@ -62,7 +62,7 @@ func main() {
 		result := model.Fit()
 		fmt.Printf("%v\n", result.Summary())
 
-		ps := glm.NewProfileScale(result)
+		ps := glm.NewScaleProfiler(result)
 
 		ps.GetScaleMLE()
 		fmt.Printf("Scale MLE: %f\n", ps.ScaleMLE)

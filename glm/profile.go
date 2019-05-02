@@ -7,12 +7,12 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
-// ProfileScale is used to do likelihood profile analysis on the scale
+// ScaleProfiler is used to do likelihood profile analysis on the scale
 // parameter.  Set the Results field to a fitted GLMResults value.
 // This is suitable for models with no additonal parameters, if there
 // are other parameters (e.g. in the Tweedie or Negative Binomial
 // case), they are held fixed at their values from the provided fit.
-type ProfileScale struct {
+type ScaleProfiler struct {
 
 	// The profile analysis is done with respect to this fitted
 	// model.
@@ -34,11 +34,11 @@ type ProfileScale struct {
 	params []float64
 }
 
-// NewProfileScale returns a ProfileScale value that can be used to
+// NewScaleProfiler returns a ScaleProfiler value that can be used to
 // profile the scale parameters.
-func NewProfileScale(result *GLMResults) *ProfileScale {
+func NewScaleProfiler(result *GLMResults) *ScaleProfiler {
 
-	ps := &ProfileScale{
+	ps := &ScaleProfiler{
 		Results: result,
 	}
 
@@ -58,7 +58,7 @@ func (a profPoint) Less(i, j int) bool { return a[i][0] < a[j][1] }
 
 // LogLike returns the profile log likelihood value at the given scale
 // parameter value.
-func (ps *ProfileScale) LogLike(scale float64) float64 {
+func (ps *ScaleProfiler) LogLike(scale float64) float64 {
 
 	model := ps.Results.Model().(*GLM)
 	model.dispersionMethod = DispersionFixed
@@ -127,8 +127,8 @@ func bisectroot(f func(float64) float64, x0, x1, y0, y1, yt float64) (float64, [
 
 // GetScaleMLE computes the maximum likelihood estimate of the scale
 // parameter and sets the ScaleMLE and MaxLogLike fields of the
-// ProfileScale struct.
-func (ps *ProfileScale) GetScaleMLE() {
+// ScaleProfiler struct.
+func (ps *ScaleProfiler) GetScaleMLE() {
 
 	// Center point
 	scale1 := ps.Results.scale
@@ -160,8 +160,8 @@ func (ps *ProfileScale) GetScaleMLE() {
 // ConfInt identifies scale parameters scale1, scale2 that define a
 // profile confidence interval for the scale parameter.  All points on
 // the profile likelihood visited during the search are added to the
-// Profile field of the ProfileScale value.
-func (ps *ProfileScale) ConfInt(prob float64) (float64, float64) {
+// Profile field of the ScaleProfiler value.
+func (ps *ScaleProfiler) ConfInt(prob float64) (float64, float64) {
 
 	qp := distuv.ChiSquared{K: 1}.Quantile(prob) / 2
 
