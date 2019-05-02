@@ -77,7 +77,7 @@ func main() {
 
 	nb := glm.NewNegBinomProfiler(result)
 
-	dispMLE := nb.MLE()
+	dispMLE := nb.DispersionMLE()
 	fmt.Printf("Dispersion MLE: %f\n", dispMLE)
 
 	pct := 95
