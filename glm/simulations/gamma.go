@@ -18,11 +18,9 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
-func simulate(n int) dstream.Dstream {
+func simulate(n int, scale float64) dstream.Dstream {
 
 	rng := rand.NewSource(4523745)
-
-	scale := 2.0
 
 	x1 := make([]float64, n)
 	x2 := make([]float64, n)
@@ -53,10 +51,12 @@ func simulate(n int) dstream.Dstream {
 
 func main() {
 
+	scale := 3.0
+
 	for _, n := range []int{500, 2000} {
 
 		fmt.Printf("n=%d\n\n", n)
-		data := simulate(1000)
+		data := simulate(1000, scale)
 
 		model := glm.NewGLM(data, "y").Family(glm.NewFamily(glm.GammaFamily)).Link(glm.NewLink(glm.LogLink)).Done()
 		result := model.Fit()
@@ -64,8 +64,8 @@ func main() {
 
 		ps := glm.NewScaleProfiler(result)
 
-		ps.GetScaleMLE()
-		fmt.Printf("Scale MLE: %f\n", ps.ScaleMLE)
+		ps.ScaleMLE()
+		fmt.Printf("Scale MLE: %f\n", ps.ScaleMLE())
 
 		pct := 95
 		lp, rp := ps.ConfInt(float64(pct) / 100)

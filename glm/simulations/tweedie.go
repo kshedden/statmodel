@@ -84,7 +84,8 @@ func main() {
 
 	tp := glm.NewTweedieProfiler(result)
 
-	vpMLE, scaleMLE := tp.MLE()
+	vpMLE := tp.VarPowerMLE()
+	scaleMLE := tp.ScaleMLE()
 	fmt.Printf("Variance power MLE: %f\n", vpMLE)
 	fmt.Printf("Scale MLE:          %f\n", scaleMLE)
 }

@@ -16,15 +16,15 @@ type ScaleProfiler struct {
 
 	// The profile analysis is done with respect to this fitted
 	// model.
-	Results *GLMResults
+	results *GLMResults
 
 	// After calling GetMLE, this will hold the MLE of the scale
 	// parameter.
-	ScaleMLE float64
+	scaleMLE float64
 
 	// This is the largest log-likelihood value that can be
 	// obtained by varying the scale parameter.
-	MaxLogLike float64
+	maxLogLike float64
 
 	// A sequence of (scale, log-likelihood) values that lie on
 	// the profile curve.
@@ -39,13 +39,15 @@ type ScaleProfiler struct {
 func NewScaleProfiler(result *GLMResults) *ScaleProfiler {
 
 	ps := &ScaleProfiler{
-		Results: result,
+		results: result,
 	}
 
 	pa := result.Params()
 	params := make([]float64, len(pa))
 	copy(params, pa)
 	ps.params = params
+
+	ps.getScaleMLE()
 
 	return ps
 }
@@ -60,7 +62,7 @@ func (a profPoint) Less(i, j int) bool { return a[i][0] < a[j][1] }
 // parameter value.
 func (ps *ScaleProfiler) LogLike(scale float64) float64 {
 
-	model := ps.Results.Model().(*GLM)
+	model := ps.results.Model().(*GLM)
 	model.dispersionMethod = DispersionFixed
 
 	model.dispersionValue = scale
@@ -125,13 +127,15 @@ func bisectroot(f func(float64) float64, x0, x1, y0, y1, yt float64) (float64, [
 	return (x0 + x1) / 2, hist
 }
 
-// GetScaleMLE computes the maximum likelihood estimate of the scale
-// parameter and sets the ScaleMLE and MaxLogLike fields of the
-// ScaleProfiler struct.
-func (ps *ScaleProfiler) GetScaleMLE() {
+// ScaleMLE returns the maximum likelihood estimate of the scale parameter.
+func (ps *ScaleProfiler) ScaleMLE() float64 {
+	return ps.scaleMLE
+}
+
+func (ps *ScaleProfiler) getScaleMLE() {
 
 	// Center point
-	scale1 := ps.Results.scale
+	scale1 := ps.results.scale
 	ll1 := ps.LogLike(scale1)
 
 	// Upper point
@@ -151,7 +155,7 @@ func (ps *ScaleProfiler) GetScaleMLE() {
 	}
 
 	var hist [][2]float64
-	ps.ScaleMLE, ps.MaxLogLike, hist = bisectmax(ps.LogLike, scale0, scale1, scale2, ll1)
+	ps.scaleMLE, ps.maxLogLike, hist = bisectmax(ps.LogLike, scale0, scale1, scale2, ll1)
 	ps.Profile = append(ps.Profile, hist...)
 
 	sort.Sort(profPoint(ps.Profile))
@@ -166,26 +170,26 @@ func (ps *ScaleProfiler) ConfInt(prob float64) (float64, float64) {
 	qp := distuv.ChiSquared{K: 1}.Quantile(prob) / 2
 
 	// Left side
-	scale0 := 0.9 * ps.ScaleMLE
+	scale0 := 0.9 * ps.scaleMLE
 	ll0 := ps.LogLike(scale0)
-	for ll0 > ps.MaxLogLike-qp {
+	for ll0 > ps.maxLogLike-qp {
 		scale0 *= 0.9
 		ll0 = ps.LogLike(scale0)
 		ps.Profile = append(ps.Profile, [2]float64{scale0, ll0})
 	}
 	var hist [][2]float64
-	scale0, hist = bisectroot(ps.LogLike, scale0, ps.ScaleMLE, ll0, ps.MaxLogLike, ps.MaxLogLike-qp)
+	scale0, hist = bisectroot(ps.LogLike, scale0, ps.scaleMLE, ll0, ps.maxLogLike, ps.maxLogLike-qp)
 	ps.Profile = append(ps.Profile, hist...)
 
 	// Right side
-	scale1 := 1.1 * ps.ScaleMLE
+	scale1 := 1.1 * ps.scaleMLE
 	ll1 := ps.LogLike(scale1)
-	for ll1 > ps.MaxLogLike-qp {
+	for ll1 > ps.maxLogLike-qp {
 		scale1 *= 1.1
 		ll1 = ps.LogLike(scale1)
 		ps.Profile = append(ps.Profile, [2]float64{scale1, ll1})
 	}
-	scale1, hist = bisectroot(ps.LogLike, ps.ScaleMLE, scale1, ps.MaxLogLike, ll1, ps.MaxLogLike-qp)
+	scale1, hist = bisectroot(ps.LogLike, ps.scaleMLE, scale1, ps.maxLogLike, ll1, ps.maxLogLike-qp)
 	ps.Profile = append(ps.Profile, hist...)
 
 	sort.Sort(profPoint(ps.Profile))
@@ -199,13 +203,13 @@ type TweedieProfiler struct {
 
 	// The profile analysis is done with respect to this fitted
 	// model.
-	Results *GLMResults
+	results *GLMResults
 
 	// The MLE of the scale parameter
-	ScaleMLE float64
+	scaleMLE float64
 
 	// The MLE of the variance power parameter
-	VarPowerMLE float64
+	varPowerMLE float64
 
 	params []float64
 }
@@ -215,21 +219,33 @@ type TweedieProfiler struct {
 func NewTweedieProfiler(result *GLMResults) *TweedieProfiler {
 
 	tp := &TweedieProfiler{
-		Results: result,
+		results: result,
 	}
 
 	pa := result.Params()
 	tp.params = make([]float64, len(pa))
 	copy(tp.params, pa)
 
+	tp.getMLE()
+
 	return tp
+}
+
+// ScaleMLE returns the maximum likelihood estimate of the scale parameter.
+func (tp *TweedieProfiler) ScaleMLE() float64 {
+	return tp.scaleMLE
+}
+
+// VarPowerMLE returns the maximum likelihood estimate of the variance power parameter..
+func (tp *TweedieProfiler) VarPowerMLE() float64 {
+	return tp.varPowerMLE
 }
 
 // LogLike returns the profile log likelihood value at the given
 // variance power and scale parameter.
 func (tp *TweedieProfiler) LogLike(pw, scale float64) float64 {
 
-	model := tp.Results.Model().(*GLM)
+	model := tp.results.Model().(*GLM)
 	model.dispersionMethod = DispersionFixed
 	model.dispersionValue = scale
 
@@ -240,8 +256,7 @@ func (tp *TweedieProfiler) LogLike(pw, scale float64) float64 {
 	return result.LogLike()
 }
 
-// MLE calculates the MLE of the variance power and scale parameters.
-func (tp *TweedieProfiler) MLE() (float64, float64) {
+func (tp *TweedieProfiler) getMLE() {
 
 	p := optimize.Problem{
 		Func: func(x []float64) float64 {
@@ -250,17 +265,15 @@ func (tp *TweedieProfiler) MLE() (float64, float64) {
 	}
 
 	// Starting point for the search
-	x0 := []float64{1.5, tp.Results.scale}
+	x0 := []float64{1.5, tp.results.scale}
 
 	r, err := optimize.Minimize(p, x0, nil, &optimize.NelderMead{})
 	if err != nil {
 		panic(err)
 	}
 
-	tp.VarPowerMLE = r.X[0]
-	tp.ScaleMLE = r.X[1]
-
-	return tp.VarPowerMLE, tp.ScaleMLE
+	tp.varPowerMLE = r.X[0]
+	tp.scaleMLE = r.X[1]
 }
 
 // NegBinomProfiler conducts profile likelihood analyses on a GLM with
@@ -269,17 +282,19 @@ type NegBinomProfiler struct {
 
 	// The profile analysis is done with respect to this fitted
 	// model.
-	Results *GLMResults
+	results *GLMResults
 
 	// The MLE of the dispersion parameter
-	DispersionMLE float64
+	dispersionMLE float64
 
 	// The maximum likelihood value at the MLE
-	MaxLogLike float64
+	maxLogLike float64
+
+	// A sequence of (dispersion, log-likelihood) values that lie on
+	// the profile curve.
+	Profile [][2]float64
 
 	params []float64
-
-	Profile [][2]float64
 }
 
 // NewNegBinomProfiler returns a NegBinomProfiler that can be used to
@@ -287,12 +302,14 @@ type NegBinomProfiler struct {
 func NewNegBinomProfiler(result *GLMResults) *NegBinomProfiler {
 
 	nb := &NegBinomProfiler{
-		Results: result,
+		results: result,
 	}
 
 	pa := result.Params()
 	nb.params = make([]float64, len(pa))
 	copy(nb.params, pa)
+
+	nb.getMLE()
 
 	return nb
 }
@@ -301,7 +318,7 @@ func NewNegBinomProfiler(result *GLMResults) *NegBinomProfiler {
 // dispersion parameter value.
 func (nb *NegBinomProfiler) LogLike(disp float64) float64 {
 
-	model := nb.Results.Model().(*GLM)
+	model := nb.results.Model().(*GLM)
 
 	model.dispersionMethod = DispersionFixed
 	model.dispersionValue = 1
@@ -314,11 +331,14 @@ func (nb *NegBinomProfiler) LogLike(disp float64) float64 {
 	return result.LogLike()
 }
 
-// GetDispersionMLE returns the maximum likelihood estimate of the
-// dispersion parameter for a negative binomial GLM.
+// MLE returns the maximum likelihood estimate of the dispersion parameter.
 func (nb *NegBinomProfiler) MLE() float64 {
+	return nb.dispersionMLE
+}
 
-	model := nb.Results.Model().(*GLM)
+func (nb *NegBinomProfiler) getMLE() {
+
+	model := nb.results.Model().(*GLM)
 
 	// Center point
 	disp1 := model.fam.alpha
@@ -341,44 +361,41 @@ func (nb *NegBinomProfiler) MLE() float64 {
 	}
 
 	var hist [][2]float64
-	nb.DispersionMLE, nb.MaxLogLike, hist = bisectmax(nb.LogLike, disp0, disp1, disp2, ll1)
+	nb.dispersionMLE, nb.maxLogLike, hist = bisectmax(nb.LogLike, disp0, disp1, disp2, ll1)
 	nb.Profile = append(nb.Profile, hist...)
 
 	sort.Sort(profPoint(nb.Profile))
-
-	return nb.DispersionMLE
 }
 
 // ConfInt identifies dispersion parameters disp1, disp2 that define a
 // profile confidence interval for the dispersion parameter.  All
 // points on the profile likelihood visited during the search are
-// added to the Profile field of the NegBinomProfiler value.  Always
-// call MLE before calling ConfInt.
+// added to the Profile field of the NegBinomProfiler value.
 func (nb *NegBinomProfiler) ConfInt(prob float64) (float64, float64) {
 
 	qp := distuv.ChiSquared{K: 1}.Quantile(prob) / 2
 
 	// Left side
-	disp0 := 0.9 * nb.DispersionMLE
+	disp0 := 0.9 * nb.dispersionMLE
 	ll0 := nb.LogLike(disp0)
-	for ll0 > nb.MaxLogLike-qp {
+	for ll0 > nb.maxLogLike-qp {
 		disp0 *= 0.9
 		ll0 = nb.LogLike(disp0)
 		nb.Profile = append(nb.Profile, [2]float64{disp0, ll0})
 	}
 	var hist [][2]float64
-	disp0, hist = bisectroot(nb.LogLike, disp0, nb.DispersionMLE, ll0, nb.MaxLogLike, nb.MaxLogLike-qp)
+	disp0, hist = bisectroot(nb.LogLike, disp0, nb.dispersionMLE, ll0, nb.maxLogLike, nb.maxLogLike-qp)
 	nb.Profile = append(nb.Profile, hist...)
 
 	// Right side
-	disp1 := 1.1 * nb.DispersionMLE
+	disp1 := 1.1 * nb.dispersionMLE
 	ll1 := nb.LogLike(disp1)
-	for ll1 > nb.MaxLogLike-qp {
+	for ll1 > nb.maxLogLike-qp {
 		disp1 *= 1.1
 		ll1 = nb.LogLike(disp1)
 		nb.Profile = append(nb.Profile, [2]float64{disp1, ll1})
 	}
-	disp1, hist = bisectroot(nb.LogLike, nb.DispersionMLE, disp1, nb.MaxLogLike, ll1, nb.MaxLogLike-qp)
+	disp1, hist = bisectroot(nb.LogLike, nb.dispersionMLE, disp1, nb.maxLogLike, ll1, nb.maxLogLike-qp)
 	nb.Profile = append(nb.Profile, hist...)
 
 	sort.Sort(profPoint(nb.Profile))
