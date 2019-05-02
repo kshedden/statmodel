@@ -1,3 +1,5 @@
+// +build ignore
+
 // Some examples of fitting GLM's to NHANES data.
 //
 // To prepare, download the demographics (DEMO_G.XPT) and blood
