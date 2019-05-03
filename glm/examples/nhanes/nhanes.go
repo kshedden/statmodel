@@ -51,12 +51,14 @@ func getData() dstream.Dstream {
 	}
 	defer gid.Close()
 
-	tc := &dstream.CSVTypeConf{
-		Float64: []string{"RIAGENDR", "RIDAGEYR", "BPXSY1"},
-		String:  []string{"RIDRETH1"},
+	types := []dstream.VarType{
+		{"RIAGENDR", dstream.Float64},
+		{"RIDAGEYR", dstream.Float64},
+		{"BPXSY1", dstream.Float64},
+		{"RIDRETH1", dstream.String},
 	}
 
-	dst := dstream.FromCSV(gid).TypeConf(tc).ChunkSize(100).HasHeader().Done()
+	dst := dstream.FromCSV(gid).SetTypes(types).ChunkSize(100).HasHeader().Done()
 	dsc := dstream.MemCopy(dst, false)
 
 	return dsc
