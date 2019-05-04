@@ -157,33 +157,33 @@ func logDeriv2Func(x []float64, y []float64) {
 }
 
 func expFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = math.Exp(x[i])
 	}
 }
 
 func logitFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		r := x[i] / (1 - x[i])
 		y[i] = math.Log(r)
 	}
 }
 
 func logitDerivFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = 1 / (x[i] * (1 - x[i]))
 	}
 }
 
 func logitDeriv2Func(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		v := x[i] * (1 - x[i])
 		y[i] = (2*x[i] - 1) / (v * v)
 	}
 }
 
 func expitFunc(x []float64, y []float64) {
-	for i := 0; i < len(x); i++ {
+	for i := range x {
 		y[i] = 1 / (1 + math.Exp(-x[i]))
 	}
 }

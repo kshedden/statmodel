@@ -126,32 +126,32 @@ func (p *GLMParams) Clone() statmodel.Parameter {
 }
 
 // Log takes a Logger value that will be used to log the results of the fit.
-func (glm *GLM) Log(log *log.Logger) *GLM {
-	glm.log = log
-	return glm
+func (model *GLM) Log(log *log.Logger) *GLM {
+	model.log = log
+	return model
 }
 
 // NumParams returns the number of covariates in the model.
-func (glm *GLM) NumParams() int {
-	return len(glm.xpos)
+func (model *GLM) NumParams() int {
+	return len(model.xpos)
 }
 
 // Xpos returns the positions of the covariates in the model's data
 // stream.
-func (glm *GLM) Xpos() []int {
-	return glm.xpos
+func (model *GLM) Xpos() []int {
+	return model.xpos
 }
 
 // DataSet returns the data stream that is used to fit the model.
-func (glm *GLM) DataSet() dstream.Dstream {
-	return glm.data
+func (model *GLM) DataSet() dstream.Dstream {
+	return model.data
 }
 
 // ConcurrentIRLS sets the minimum chunk size for which concurrent
 // calculations are used during IRLS.
-func (glm *GLM) ConcurrentIRLS(n int) *GLM {
-	glm.concurrentIRLS = n
-	return glm
+func (model *GLM) ConcurrentIRLS(n int) *GLM {
+	model.concurrentIRLS = n
+	return model
 }
 
 // GLMResults describes the results of a fitted generalized linear model.
@@ -509,7 +509,7 @@ func (glm *GLM) SetFamily(fam FamilyType) *GLM {
 // LogLike returns the log-likelihood value for the generalized linear
 // model at the given parameter values.  If exact is false, multiplicative
 // factors that are constant with respect to the parameter may be omitted.
-func (glm *GLM) LogLike(params statmodel.Parameter, exact bool) float64 {
+func (model *GLM) LogLike(params statmodel.Parameter, exact bool) float64 {
 
 	gpar := params.(*GLMParams)
 	coeff := gpar.coeff
@@ -519,20 +519,20 @@ func (glm *GLM) LogLike(params statmodel.Parameter, exact bool) float64 {
 	var linpred []float64
 	var mn []float64
 
-	glm.data.Reset()
+	model.data.Reset()
 
-	for glm.data.Next() {
+	for model.data.Next() {
 
 		var yda, wgts, off []float64
 
-		yda = glm.data.GetPos(glm.ypos).([]float64)
+		yda = model.data.GetPos(model.ypos).([]float64)
 		n := len(yda)
 
-		if glm.weightpos != -1 {
-			wgts = glm.data.GetPos(glm.weightpos).([]float64)
+		if model.weightpos != -1 {
+			wgts = model.data.GetPos(model.weightpos).([]float64)
 		}
-		if glm.offsetpos != -1 {
-			off = glm.data.GetPos(glm.offsetpos).([]float64)
+		if model.offsetpos != -1 {
+			off = model.data.GetPos(model.offsetpos).([]float64)
 		}
 
 		// Adjust the allocations
@@ -541,23 +541,23 @@ func (glm *GLM) LogLike(params statmodel.Parameter, exact bool) float64 {
 
 		// Update the linear predictor
 		zero(linpred)
-		for j, k := range glm.xpos {
-			xda := glm.data.GetPos(k).([]float64)
-			floats.AddScaled(linpred, coeff[j]/glm.xn[j], xda)
+		for j, k := range model.xpos {
+			xda := model.data.GetPos(k).([]float64)
+			floats.AddScaled(linpred, coeff[j]/model.xn[j], xda)
 		}
 		if off != nil {
 			floats.Add(linpred, off)
 		}
 
 		// Update the log likelihood value
-		glm.link.InvLink(linpred, mn)
-		loglike += glm.fam.LogLike(yda, mn, wgts, scale, exact)
+		model.link.InvLink(linpred, mn)
+		loglike += model.fam.LogLike(yda, mn, wgts, scale, exact)
 	}
 
 	// Account for the L2 penalty
-	if glm.l2wgt != nil {
-		nobs := float64(glm.data.NumObs())
-		for j, v := range glm.l2wgt {
+	if model.l2wgt != nil {
+		nobs := float64(model.data.NumObs())
+		for j, v := range model.l2wgt {
 			loglike -= nobs * v * coeff[j] * coeff[j] / 2
 		}
 	}
@@ -573,7 +573,7 @@ func scoreFactor(yda, mn, deriv, va, sfac []float64) {
 
 // Score returns the score vector for the generalized linear model at
 // the given parameter values.
-func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
+func (model *GLM) Score(params statmodel.Parameter, score []float64) {
 
 	gpar := params.(*GLMParams)
 	coeff := gpar.coeff
@@ -581,21 +581,21 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 
 	var linpred, mn, deriv, va, fac, facw []float64
 
-	glm.data.Reset()
+	model.data.Reset()
 	zero(score)
 
-	for glm.data.Next() {
+	for model.data.Next() {
 
 		var yda, wgts, off []float64
 
-		yda = glm.data.GetPos(glm.ypos).([]float64)
+		yda = model.data.GetPos(model.ypos).([]float64)
 		n := len(yda)
 
-		if glm.weightpos != -1 {
-			wgts = glm.data.GetPos(glm.weightpos).([]float64)
+		if model.weightpos != -1 {
+			wgts = model.data.GetPos(model.weightpos).([]float64)
 		}
-		if glm.offsetpos != -1 {
-			off = glm.data.GetPos(glm.offsetpos).([]float64)
+		if model.offsetpos != -1 {
+			off = model.data.GetPos(model.offsetpos).([]float64)
 		}
 
 		// Adjust the allocations
@@ -608,29 +608,29 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 
 		// Update the linear predictor
 		zero(linpred)
-		for j, k := range glm.xpos {
-			xda := glm.data.GetPos(k).([]float64)
-			floats.AddScaled(linpred, coeff[j]/glm.xn[j], xda)
+		for j, k := range model.xpos {
+			xda := model.data.GetPos(k).([]float64)
+			floats.AddScaled(linpred, coeff[j]/model.xn[j], xda)
 		}
 		if off != nil {
 			floats.Add(linpred, off)
 		}
 
-		glm.link.InvLink(linpred, mn)
-		glm.link.Deriv(mn, deriv)
-		glm.vari.Var(mn, va)
+		model.link.InvLink(linpred, mn)
+		model.link.Deriv(mn, deriv)
+		model.vari.Var(mn, va)
 
 		scoreFactor(yda, mn, deriv, va, fac)
 
-		for j, k := range glm.xpos {
+		for j, k := range model.xpos {
 
-			xda := glm.data.GetPos(k).([]float64)
+			xda := model.data.GetPos(k).([]float64)
 
 			if wgts == nil {
-				score[j] += floats.Dot(fac, xda) / glm.xn[j]
+				score[j] += floats.Dot(fac, xda) / model.xn[j]
 			} else {
 				floats.MulTo(facw, fac, wgts)
-				score[j] += floats.Dot(facw, xda) / glm.xn[j]
+				score[j] += floats.Dot(facw, xda) / model.xn[j]
 			}
 		}
 	}
@@ -640,9 +640,9 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 	}
 
 	// Account for the L2 penalty
-	if glm.l2wgt != nil {
-		nobs := float64(glm.data.NumObs())
-		for j, v := range glm.l2wgt {
+	if model.l2wgt != nil {
+		nobs := float64(model.data.NumObs())
+		for j, v := range model.l2wgt {
 			score[j] -= nobs * v * coeff[j]
 		}
 	}
@@ -652,34 +652,34 @@ func (glm *GLM) Score(params statmodel.Parameter, score []float64) {
 // returned as a one-dimensional array, which is the vectorized form
 // of the Hessian matrix.  Either the observed or expected Hessian can
 // be calculated.
-func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess []float64) {
+func (model *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess []float64) {
 
 	gpar := param.(*GLMParams)
 	coeff := gpar.coeff
 
 	var linpred, mn, lderiv, lderiv2, va, vad, fac, sfac []float64
 
-	nvar := glm.NumParams()
+	nvar := model.NumParams()
 	xdat := make([][]float64, nvar)
-	glm.data.Reset()
+	model.data.Reset()
 	zero(hess)
 
-	for glm.data.Next() {
+	for model.data.Next() {
 
 		var yda, wgts, off []float64
 
-		for j, k := range glm.xpos {
-			xdat[j] = glm.data.GetPos(k).([]float64)
+		for j, k := range model.xpos {
+			xdat[j] = model.data.GetPos(k).([]float64)
 		}
 
-		yda = glm.data.GetPos(glm.ypos).([]float64)
+		yda = model.data.GetPos(model.ypos).([]float64)
 		n := len(yda)
 
-		if glm.weightpos != -1 {
-			wgts = glm.data.GetPos(glm.weightpos).([]float64)
+		if model.weightpos != -1 {
+			wgts = model.data.GetPos(model.weightpos).([]float64)
 		}
-		if glm.offsetpos != -1 {
-			off = glm.data.GetPos(glm.offsetpos).([]float64)
+		if model.offsetpos != -1 {
+			off = model.data.GetPos(model.offsetpos).([]float64)
 		}
 
 		// Adjust the allocations
@@ -692,7 +692,7 @@ func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess [
 
 		// Update the linear predictor
 		zero(linpred)
-		for j := range glm.xpos {
+		for j := range model.xpos {
 			floats.AddScaled(linpred, coeff[j], xdat[j])
 		}
 		if off != nil {
@@ -700,10 +700,10 @@ func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess [
 		}
 
 		// The mean response
-		glm.link.InvLink(linpred, mn)
+		model.link.InvLink(linpred, mn)
 
-		glm.link.Deriv(mn, lderiv)
-		glm.vari.Var(mn, va)
+		model.link.Deriv(mn, lderiv)
+		model.vari.Var(mn, va)
 
 		// Factor for the expected Hessian
 		for i := 0; i < len(lderiv); i++ {
@@ -714,8 +714,8 @@ func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess [
 		if ht == statmodel.ObsHess {
 			vad = resize(vad, n)
 			lderiv2 = resize(lderiv2, n)
-			glm.link.Deriv2(mn, lderiv2)
-			glm.vari.Deriv(mn, vad)
+			model.link.Deriv2(mn, lderiv2)
+			model.vari.Deriv(mn, vad)
 			scoreFactor(yda, mn, lderiv, va, sfac)
 
 			for i := range fac {
@@ -729,32 +729,32 @@ func (glm *GLM) Hessian(param statmodel.Parameter, ht statmodel.HessType, hess [
 		}
 
 		// Update the Hessian matrix
-		glm.hessXprod(xdat, fac, wgts, hess)
+		model.hessXprod(xdat, fac, wgts, hess)
 	}
 
 	// Fill in the upper triangle
-	for j1 := range glm.xpos {
+	for j1 := range model.xpos {
 		for j2 := 0; j2 < j1; j2++ {
 			hess[j2*nvar+j1] = hess[j1*nvar+j2]
 		}
 	}
 
 	// Account for the L2 penalty
-	if glm.l2wgt != nil {
-		nobs := float64(glm.data.NumObs())
-		for j, v := range glm.l2wgt {
+	if model.l2wgt != nil {
+		nobs := float64(model.data.NumObs())
+		for j, v := range model.l2wgt {
 			hess[j*nvar+j] -= nobs * v
 		}
 	}
 }
 
-func (glm *GLM) hessXprod(xdat [][]float64, fac, wgts, hess []float64) {
+func (model *GLM) hessXprod(xdat [][]float64, fac, wgts, hess []float64) {
 
 	nvar := len(xdat)
 
 	var wg sync.WaitGroup
 
-	for j1 := range glm.xpos {
+	for j1 := range model.xpos {
 		for j2 := 0; j2 <= j1; j2++ {
 
 			wg.Add(1)
@@ -780,41 +780,41 @@ func (glm *GLM) hessXprod(xdat [][]float64, fac, wgts, hess []float64) {
 
 // GetFocusable returns a focusable version of the model.
 // This is exposed for use in elastic net optimization.
-func (glm *GLM) GetFocusable() statmodel.ModelFocuser {
+func (model *GLM) GetFocusable() statmodel.ModelFocuser {
 
-	other := []string{glm.yname}
-	if glm.weightpos != -1 {
-		other = append(other, glm.weightname)
+	other := []string{model.yname}
+	if model.weightpos != -1 {
+		other = append(other, model.weightname)
 	}
 
 	// Set up the focusable data.
-	fdat := statmodel.NewFocusData(glm.data, glm.xpos, glm.xn).Other(other)
-	if glm.offsetpos != -1 {
+	fdat := statmodel.NewFocusData(model.data, model.xpos, model.xn).Other(other)
+	if model.offsetpos != -1 {
 		// An actual offset, to be combined if present with
 		// the offset that results by combining the non-focus
 		// covariates.
-		fdat.Offset(glm.offsetpos)
+		fdat.Offset(model.offsetpos)
 	}
 	fdat = fdat.Done()
 
-	newglm := NewGLM(fdat, glm.yname).Family(glm.fam).Link(glm.link).VarFunc(glm.vari).Offset("off")
-	if glm.weightpos != -1 {
-		newglm = newglm.Weight(glm.weightname)
-	} else if glm.weightname != "" {
-		newglm = newglm.Weight(glm.weightname)
+	newmodel := NewGLM(fdat, model.yname).Family(model.fam).Link(model.link).VarFunc(model.vari).Offset("off")
+	if model.weightpos != -1 {
+		newmodel = newmodel.Weight(model.weightname)
+	} else if model.weightname != "" {
+		newmodel = newmodel.Weight(model.weightname)
 	}
 
-	if glm.l1wgt != nil {
-		newglm = newglm.L1Penalty(make(map[string]float64))
+	if model.l1wgt != nil {
+		newmodel = newmodel.L1Penalty(make(map[string]float64))
 	}
 
-	if glm.l2wgt != nil {
-		newglm = newglm.L2Penalty(make(map[string]float64))
+	if model.l2wgt != nil {
+		newmodel = newmodel.L2Penalty(make(map[string]float64))
 	}
 
-	newglm.Done()
+	newmodel.Done()
 
-	return newglm
+	return newmodel
 }
 
 // Focus sets the data to contain only one predictor (with the given
@@ -822,12 +822,12 @@ func (glm *GLM) GetFocusable() statmodel.ModelFocuser {
 // through dthe offset.  The method is exposed for use in elastic net
 // fitting, but is unlikely to be useful for ordinary users.  Can only be
 // called on a focusable version of the model value.
-func (glm *GLM) Focus(j int, coeff []float64, l2wgt float64) {
+func (model *GLM) Focus(j int, coeff []float64, l2wgt float64) {
 
-	glm.data.(*statmodel.FocusData).Focus(j, coeff)
+	model.data.(*statmodel.FocusData).Focus(j, coeff)
 
 	if l2wgt > 0 {
-		glm.l2wgt[0] = l2wgt
+		model.l2wgt[0] = l2wgt
 	}
 }
 
@@ -836,39 +836,39 @@ func (glm *GLM) Focus(j int, coeff []float64, l2wgt float64) {
 // coordinate descent optimization.  For fitting with no L1
 // regularization (with or without L2 regularization), call
 // fitGradient which invokes gradient optimization.
-func (glm *GLM) fitRegularized() *GLMResults {
+func (model *GLM) fitRegularized() *GLMResults {
 
-	if glm.log != nil {
+	if model.log != nil {
 		log.Print("Regularized fitting\n")
 	}
 
 	start := &GLMParams{
-		coeff: make([]float64, len(glm.xpos)),
+		coeff: make([]float64, len(model.xpos)),
 		scale: 1.0,
 	}
 
-	checkstep := strings.ToLower(glm.fam.Name) != "gaussian"
-	par := statmodel.FitL1Reg(glm, start, glm.l1wgt, glm.l2wgt, glm.xn, checkstep)
+	checkstep := strings.ToLower(model.fam.Name) != "gaussian"
+	par := statmodel.FitL1Reg(model, start, model.l1wgt, model.l2wgt, model.xn, checkstep)
 	coeff := par.GetCoeff()
 
 	// Since coeff is transformed back to the original scale, we
 	// need to stop normalizing (else EstimateScale and other
 	// post-fit quantities will be wrong).
-	for i := range glm.xn {
-		glm.xn[i] = 1
+	for i := range model.xn {
+		model.xn[i] = 1
 	}
 
 	// Covariate names
 	var xna []string
-	na := glm.data.Names()
-	for _, j := range glm.xpos {
+	na := model.data.Names()
+	for _, j := range model.xpos {
 		xna = append(xna, na[j])
 	}
 
-	scale := glm.EstimateScale(coeff)
+	scale := model.EstimateScale(coeff)
 
 	results := &GLMResults{
-		BaseResults: statmodel.NewBaseResults(glm, 0, coeff, xna, nil),
+		BaseResults: statmodel.NewBaseResults(model, 0, coeff, xna, nil),
 		scale:       scale,
 	}
 
@@ -879,60 +879,60 @@ func (glm *GLM) fitRegularized() *GLMResults {
 // object.  Unregularized fits and fits involving L2 regularization
 // can be obtained, but if L1 regularization is desired use
 // FitRegularized instead of Fit.
-func (glm *GLM) Fit() *GLMResults {
+func (model *GLM) Fit() *GLMResults {
 
-	if glm.l1wgt != nil {
-		return glm.fitRegularized()
+	if model.l1wgt != nil {
+		return model.fitRegularized()
 	}
 
-	nvar := glm.NumParams()
+	nvar := model.NumParams()
 	maxiter := 20
 
 	var start []float64
-	if glm.start != nil {
-		start = glm.start
+	if model.start != nil {
+		start = model.start
 	} else {
 		start = make([]float64, nvar)
 	}
 
-	if glm.l2wgt != nil {
-		glm.fitMethod = "gradient"
+	if model.l2wgt != nil {
+		model.fitMethod = "gradient"
 	}
 
 	var params []float64
 
-	if strings.ToLower(glm.fitMethod) == "gradient" {
-		if glm.log != nil {
+	if strings.ToLower(model.fitMethod) == "gradient" {
+		if model.log != nil {
 			log.Print("Unregularized fitting using gradient optimization\n")
 		}
-		params, _ = glm.fitGradient(start)
+		params, _ = model.fitGradient(start)
 	} else {
-		if glm.log != nil {
+		if model.log != nil {
 			log.Print("Unregularized fitting using IRLS\n")
 		}
-		params = glm.fitIRLS(start, maxiter)
+		params = model.fitIRLS(start, maxiter)
 	}
 
 	// Everything remaining does not use scaling
-	for j := range glm.xn {
-		glm.xn[j] = 1
+	for j := range model.xn {
+		model.xn[j] = 1
 	}
 
-	scale := glm.EstimateScale(params)
+	scale := model.EstimateScale(params)
 
-	vcov, _ := statmodel.GetVcov(glm, &GLMParams{params, scale})
+	vcov, _ := statmodel.GetVcov(model, &GLMParams{params, scale})
 	floats.Scale(scale, vcov)
 
-	ll := glm.LogLike(&GLMParams{params, scale}, true)
+	ll := model.LogLike(&GLMParams{params, scale}, true)
 
 	var xna []string
-	na := glm.data.Names()
-	for _, j := range glm.xpos {
+	na := model.data.Names()
+	for _, j := range model.xpos {
 		xna = append(xna, na[j])
 	}
 
 	results := &GLMResults{
-		BaseResults: statmodel.NewBaseResults(glm, ll, params, xna, vcov),
+		BaseResults: statmodel.NewBaseResults(model, ll, params, xna, vcov),
 		scale:       scale,
 	}
 
@@ -941,34 +941,34 @@ func (glm *GLM) Fit() *GLMResults {
 
 // fitGradient uses gradient-based optimization to obtain the fitted
 // GLM parameters.
-func (glm *GLM) fitGradient(start []float64) ([]float64, float64) {
+func (model *GLM) fitGradient(start []float64) ([]float64, float64) {
 
 	p := optimize.Problem{
 		Func: func(x []float64) float64 {
-			return -glm.LogLike(&GLMParams{x, 1}, false)
+			return -model.LogLike(&GLMParams{x, 1}, false)
 		},
 		Grad: func(grad, x []float64) {
 			if len(grad) != len(x) {
 				grad = make([]float64, len(x))
 			}
-			glm.Score(&GLMParams{x, 1}, grad)
+			model.Score(&GLMParams{x, 1}, grad)
 			floats.Scale(-1, grad)
 		},
 	}
 
-	if glm.settings == nil {
-		glm.settings = &optimize.Settings{}
-		glm.settings.Recorder = nil
-		glm.settings.GradientThreshold = 1e-6
+	if model.settings == nil {
+		model.settings = &optimize.Settings{}
+		model.settings.Recorder = nil
+		model.settings.GradientThreshold = 1e-6
 	}
 
-	if glm.method == nil {
-		glm.method = &optimize.BFGS{}
+	if model.method == nil {
+		model.method = &optimize.BFGS{}
 	}
 
-	optrslt, err := optimize.Minimize(p, start, glm.settings, glm.method)
+	optrslt, err := optimize.Minimize(p, start, model.settings, model.method)
 	if err != nil {
-		glm.failMessage(optrslt)
+		model.failMessage(optrslt)
 		panic(err)
 	}
 	if err = optrslt.Status.Err(); err != nil {
@@ -977,7 +977,7 @@ func (glm *GLM) fitGradient(start []float64) ([]float64, float64) {
 
 	params := make([]float64, len(optrslt.X))
 	for j := range optrslt.X {
-		params[j] = optrslt.X[j] / glm.xn[j]
+		params[j] = optrslt.X[j] / model.xn[j]
 	}
 
 	fvalue := -optrslt.F
@@ -987,39 +987,39 @@ func (glm *GLM) fitGradient(start []float64) ([]float64, float64) {
 
 // OptSettings allows the caller to provide an optimization settings
 // value.
-func (glm *GLM) OptSettings(s *optimize.Settings) *GLM {
-	glm.settings = s
-	return glm
+func (model *GLM) OptSettings(s *optimize.Settings) *GLM {
+	model.settings = s
+	return model
 }
 
 // OptMethod sets the optimization method from gonum.Optimize.
-func (glm *GLM) OptMethod(method optimize.Method) *GLM {
-	glm.method = method
-	return glm
+func (model *GLM) OptMethod(method optimize.Method) *GLM {
+	model.method = method
+	return model
 }
 
 // failMessage prints information that can help diagnose optimization failures.
-func (glm *GLM) failMessage(optrslt *optimize.Result) {
+func (model *GLM) failMessage(optrslt *optimize.Result) {
 
-	xnames := glm.data.Names()
+	xnames := model.data.Names()
 
 	os.Stderr.WriteString("Current point and gradient:\n")
 	for j, x := range optrslt.X {
-		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", x, optrslt.Gradient[j], xnames[glm.xpos[j]]))
+		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", x, optrslt.Gradient[j], xnames[model.xpos[j]]))
 	}
 
 	// Get the covariates to avoid repeated type assertions
-	glm.data.Reset()
-	xvars := make([][]float64, len(glm.xpos))
-	for glm.data.Next() {
-		for k, j := range glm.xpos {
-			xvars[k] = append(xvars[k], glm.data.GetPos(j).([]float64)...)
+	model.data.Reset()
+	xvars := make([][]float64, len(model.xpos))
+	for model.data.Next() {
+		for k, j := range model.xpos {
+			xvars[k] = append(xvars[k], model.data.GetPos(j).([]float64)...)
 		}
 	}
 
 	// Get the mean and standard deviation of covariates.
-	mn := make([]float64, len(glm.xpos))
-	sd := make([]float64, len(glm.xpos))
+	mn := make([]float64, len(model.xpos))
+	sd := make([]float64, len(model.xpos))
 	for j, x := range xvars {
 		mn[j] = floats.Sum(x) / float64(len(x))
 	}
@@ -1034,38 +1034,38 @@ func (glm *GLM) failMessage(optrslt *optimize.Result) {
 
 	os.Stderr.WriteString("\nCovariate means and standard deviations:\n")
 	for j, m := range mn {
-		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", m, sd[j], xnames[glm.xpos[j]]))
+		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", m, sd[j], xnames[model.xpos[j]]))
 	}
 }
 
 // EstimateScale returns an estimate of the GLM scale parameter at the
 // given parameter values.
-func (glm *GLM) EstimateScale(params []float64) float64 {
+func (model *GLM) EstimateScale(params []float64) float64 {
 
-	if glm.dispersionMethod == DispersionFixed {
-		return glm.dispersionValue
+	if model.dispersionMethod == DispersionFixed {
+		return model.dispersionValue
 	}
 
-	nvar := glm.NumParams()
+	nvar := model.NumParams()
 	var linpred []float64
 	var mn []float64
 	var va []float64
 	var ws float64
 
-	glm.data.Reset()
+	model.data.Reset()
 	var scale float64
-	for glm.data.Next() {
+	for model.data.Next() {
 
 		var yda, wgt, off []float64
 
-		yda = glm.data.GetPos(glm.ypos).([]float64)
+		yda = model.data.GetPos(model.ypos).([]float64)
 		n := len(yda)
 
-		if glm.weightpos != -1 {
-			wgt = glm.data.GetPos(glm.weightpos).([]float64)
+		if model.weightpos != -1 {
+			wgt = model.data.GetPos(model.weightpos).([]float64)
 		}
-		if glm.offsetpos != -1 {
-			off = glm.data.GetPos(glm.offsetpos).([]float64)
+		if model.offsetpos != -1 {
+			off = model.data.GetPos(model.offsetpos).([]float64)
 		}
 
 		linpred = resize(linpred, n)
@@ -1073,8 +1073,8 @@ func (glm *GLM) EstimateScale(params []float64) float64 {
 		va = resize(va, n)
 
 		zero(linpred)
-		for j, k := range glm.xpos {
-			xda := glm.data.GetPos(k).([]float64)
+		for j, k := range model.xpos {
+			xda := model.data.GetPos(k).([]float64)
 			for i, x := range xda {
 				linpred[i] += params[j] * x
 			}
@@ -1084,8 +1084,8 @@ func (glm *GLM) EstimateScale(params []float64) float64 {
 		}
 
 		// The mean response and variance
-		glm.link.InvLink(linpred, mn)
-		glm.vari.Var(mn, va)
+		model.link.InvLink(linpred, mn)
+		model.vari.Var(mn, va)
 
 		for i, y := range yda {
 			r := y - mn[i]
@@ -1131,7 +1131,7 @@ func one(x []float64) {
 type GLMSummary struct {
 
 	// The GLM
-	glm *GLM
+	model *GLM
 
 	// The results structure
 	results *GLMResults
@@ -1174,14 +1174,14 @@ func (gs *GLMSummary) String() string {
 	sum.Title = "Generalized linear model analysis"
 
 	sum.Top = []string{
-		fmt.Sprintf("Family:   %s", gs.glm.fam.Name),
-		fmt.Sprintf("Link:     %s", gs.glm.link.Name),
-		fmt.Sprintf("Variance: %s", gs.glm.vari.Name),
-		fmt.Sprintf("Num obs:  %d", gs.glm.DataSet().NumObs()),
+		fmt.Sprintf("Family:   %s", gs.model.fam.Name),
+		fmt.Sprintf("Link:     %s", gs.model.link.Name),
+		fmt.Sprintf("Variance: %s", gs.model.vari.Name),
+		fmt.Sprintf("Num obs:  %d", gs.model.DataSet().NumObs()),
 		fmt.Sprintf("Scale:    %f", gs.results.scale),
 	}
 
-	l1 := gs.glm.l1wgt != nil
+	l1 := gs.model.l1wgt != nil
 
 	if !l1 {
 		if gs.paramXform == nil {
@@ -1272,10 +1272,160 @@ func (gs *GLMSummary) String() string {
 // Summary displays a summary table of the model results.
 func (rslt *GLMResults) Summary() *GLMSummary {
 
-	glm := rslt.Model().(*GLM)
+	model := rslt.Model().(*GLM)
 
 	return &GLMSummary{
-		glm:     glm,
+		model:   model,
 		results: rslt,
 	}
+}
+
+// LinearPredictor returns the linear combination of the model covariates based
+// on the provided parameter vector.  The provided slice is used if it is large
+// enough, otherwise a new slice is allocated.  The linear predictor is returned.
+func (model *GLM) LinearPredictor(params *GLMParams, lp []float64) []float64 {
+
+	nobs := model.data.NumObs()
+	coeff := params.coeff
+
+	if cap(lp) < nobs {
+		lp = make([]float64, nobs)
+	} else {
+		lp = lp[0:nobs]
+		zero(lp)
+	}
+
+	if model.offsetpos != -1 {
+		off := model.data.GetPos(model.offsetpos).([]float64)
+		floats.Add(lp, off)
+	}
+
+	model.data.Reset()
+	ii := 0
+	for model.data.Next() {
+		var m int
+		for j, k := range model.xpos {
+			xda := model.data.GetPos(k).([]float64)
+			m = len(xda)
+			floats.AddScaled(lp[ii:ii+m], coeff[j], xda)
+		}
+		ii += m
+	}
+
+	return lp
+}
+
+// LinearPredictor returns the fitted linear predictor.  If the provided
+// slice is large enough, it is used, otherwise a new allocation is made.
+// The fitted linear predictor is returned.
+func (result *GLMResults) LinearPredictor(lp []float64) []float64 {
+	model := result.Model().(*GLM)
+	params := &GLMParams{result.Params(), result.scale}
+	return model.LinearPredictor(params, nil)
+}
+
+// Mean returns the fitted mean of the GLM for the given parameter.  If
+// the provided slice is large enough to hold the result, it is used, otherwise
+// a new slice is allocated.  The fitted means are returned.
+func (model *GLM) Mean(pa *GLMParams, mn []float64) []float64 {
+
+	mn = model.LinearPredictor(pa, mn)
+	model.link.InvLink(mn, mn)
+
+	return mn
+}
+
+// LinearPredictor returns the fitted linear predictor.  If the provided
+// slice is large enough, it is used, otherwise a new allocation is made.
+// The fitted linear predictor is returned.
+func (result *GLMResults) Mean(lp []float64) []float64 {
+	model := result.Model().(*GLM)
+	params := &GLMParams{result.Params(), result.scale}
+	return model.Mean(params, nil)
+}
+
+// Resid returns the residuals (observed minus fitted values) for the model,
+// at the given parameter vector.
+func (model *GLM) Resid(pa *GLMParams, resid []float64) []float64 {
+
+	resid = model.Mean(pa, resid)
+
+	model.data.Reset()
+	ii := 0
+	for model.data.Next() {
+		yda := model.data.GetPos(model.ypos).([]float64)
+		m := len(yda)
+		for i := range yda {
+			resid[ii+i] = yda[i] - resid[ii+i]
+		}
+		ii += m
+	}
+
+	return resid
+}
+
+// Resid returns the residuals (observed minus fitted values) at the fitted
+// parameter value.
+func (result *GLMResults) Resid(resid []float64) []float64 {
+	model := result.Model().(*GLM)
+	params := &GLMParams{result.Params(), result.scale}
+	return model.Resid(params, nil)
+}
+
+// Variance returns the model-based variance of the GLM responses for the given parameter.  If
+// the provided slice is large enough to hold the variances, it is used, otherwise
+// a new slice is allocated.  The variances are returned.
+func (model *GLM) Variance(pa *GLMParams, va []float64) []float64 {
+
+	va = model.Mean(pa, va)
+	model.vari.Var(va, va)
+	floats.Scale(pa.scale, va)
+
+	return va
+}
+
+// PearsonResid calculates the Pearson residuals at the given parameter value.
+// The Pearson residuals are the standardized residuals, using the model standard
+// deviation to standardize.  If the provided slice is large enough to hold the
+// result, it is used, otherwise a new slice is allocated.  The Pearson standardized
+// residuals are returned.
+func (model *GLM) PearsonResid(pa *GLMParams, resid []float64) []float64 {
+
+	n := model.data.NumObs()
+	if cap(resid) < n {
+		resid = make([]float64, n)
+	} else {
+		resid = resid[0:n]
+		zero(resid)
+	}
+
+	mn := model.Mean(pa, nil)
+	va := make([]float64, len(mn))
+	model.vari.Var(mn, va)
+	floats.Scale(pa.scale, va)
+
+	model.data.Reset()
+	ii := 0
+	for model.data.Next() {
+		yda := model.data.GetPos(model.ypos).([]float64)
+		m := len(yda)
+		for i := range yda {
+			resid[ii+i] = (yda[i] - mn[ii+i]) / math.Sqrt(va[ii+i])
+		}
+		ii += m
+	}
+
+	return resid
+}
+
+// PearsonResid calculates the Pearson residuals at the given parameter value.
+// The Pearson residuals are the standardized residuals, using the model standard
+// deviation to standardize.  If the provided slice is large enough to hold the
+// result, it is used, otherwise a new slice is allocated.  The Pearson standardized
+// residuals are returned.
+func (result *GLMResults) PearsonResid(resid []float64) []float64 {
+
+	model := result.Model().(*GLM)
+	pa := &GLMParams{result.Params(), result.scale}
+	return model.PearsonResid(pa, resid)
 }
