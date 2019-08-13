@@ -196,6 +196,7 @@ type GLMConfig struct {
 	// string, all weights are equal to 1.
 	WeightVar string
 
+	// OffsetVar is the name of a variable providing an offset
 	OffsetVar string
 
 	// Family defines a GLMfamily.
@@ -204,8 +205,18 @@ type GLMConfig struct {
 	// Link defines a GLM link function; if not provided the default link for the family is used.
 	Link *Link
 
+	// VarFunc defines how the variance relates to the mean; if not provided, the default
+	// variance function for the family is used.
+	VarFunc *Variance
+
+	// L1Penalty gives the level of penalization for each variable, by name
 	L1Penalty map[string]float64
+
+	// L2Penalty gives the level of penalization for each variable, by name
 	L2Penalty map[string]float64
+
+	// DispersionForm determines how the dispersion parameter is handled
+	DispersionForm DispersionForm
 }
 
 // DefaultConfig returns default configuration values for a GLM.
@@ -281,22 +292,24 @@ func NewGLM(data statmodel.Dataset, config *GLMConfig) *GLM {
 	}
 
 	model := &GLM{
-		data:           data.Data(),
-		varnames:       data.Varnames(),
-		ypos:           ypos,
-		xpos:           xpos,
-		weightpos:      weightpos,
-		offsetpos:      offsetpos,
-		fitMethod:      config.FitMethod,
-		concurrentIRLS: config.ConcurrentIRLS,
-		fam:            config.Family,
-		link:           config.Link,
-		start:          config.Start,
-		l1wgt:          penToSlice(config.L1Penalty),
-		l2wgt:          penToSlice(config.L2Penalty),
-		l1wgtMap:       config.L1Penalty,
-		l2wgtMap:       config.L2Penalty,
-		log:            config.Log,
+		data:             data.Data(),
+		varnames:         data.Varnames(),
+		ypos:             ypos,
+		xpos:             xpos,
+		weightpos:        weightpos,
+		offsetpos:        offsetpos,
+		dispersionMethod: config.DispersionForm,
+		fitMethod:        config.FitMethod,
+		concurrentIRLS:   config.ConcurrentIRLS,
+		fam:              config.Family,
+		link:             config.Link,
+		vari:             config.VarFunc,
+		start:            config.Start,
+		l1wgt:            penToSlice(config.L1Penalty),
+		l2wgt:            penToSlice(config.L2Penalty),
+		l1wgtMap:         config.L1Penalty,
+		l2wgtMap:         config.L2Penalty,
+		log:              config.Log,
 	}
 
 	model.init()

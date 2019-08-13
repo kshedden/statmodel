@@ -30,11 +30,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
+	"io"
+	"strconv"
 
-	"github.com/kshedden/dstream/dstream"
-	"github.com/kshedden/dstream/formula"
 	"github.com/kshedden/statmodel/glm"
+	"github.com/kshedden/statmodel/statmodel"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
@@ -42,8 +44,6 @@ import (
 )
 
 var (
-	data dstream.Dstream
-
 	raw string = `0.05,0.00,1.25,2.50,5.50,1.00,5.00,5.00,17.50
 0.00,0.05,1.25,0.50,1.00,5.00,0.10,10.00,25.00
 0.00,0.05,2.50,0.01,6.00,5.00,5.00,5.00,42.50
@@ -56,7 +56,7 @@ var (
 1.50,12.70,26.25,40.00,43.50,75.00,75.00,75.00,95.00`
 
 	// This is the square of the usual binomial variance function.
-	squaredbinom glm.Variance = glm.Variance{
+	squaredbinom = &glm.Variance{
 		Name: "SquaredBinomial",
 		Var: func(mn, va []float64) {
 			for i := range mn {
@@ -71,47 +71,79 @@ var (
 	}
 )
 
-func setup() dstream.Dstream {
+// setup builds a dataset from the raw data.
+func setup() statmodel.Dataset {
 
 	rdr := bytes.NewReader([]byte(raw))
+	rdc := csv.NewReader(rdr)
 
-	types := []dstream.VarType{
-		{"pct1", dstream.Float64},
-		{"pct2", dstream.Float64},
-		{"pct3", dstream.Float64},
-		{"pct4", dstream.Float64},
-		{"pct5", dstream.Float64},
-		{"pct6", dstream.Float64},
-		{"pct7", dstream.Float64},
-		{"pct8", dstream.Float64},
-		{"pct9", dstream.Float64},
-	}
+	// There is one outcome variable, 10 row effects, and 9 column effects
+	nrow := 10
+	ncol := 9
 
-	da := dstream.FromCSV(rdr).SetTypes(types).Done()
-
+	// The outcome variable
 	var y []float64
-	var row, col []string
-	var irow int
-	for da.Next() {
 
-		var z []float64
-		for j := 0; j < 9; j++ {
-			z = da.GetPos(j).([]float64)
-			for i := range z {
-				row = append(row, fmt.Sprintf("%d", irow+i))
-				col = append(col, fmt.Sprintf("%d", j))
-				y = append(y, z[i]/100)
+	// Row and column indicators
+	rowix := make([][]float64, nrow)
+	colix := make([][]float64, ncol)
+
+	for row := 0; ; row++ {
+		rec, err := rdc.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
+		}
+
+		for col := range rec {
+			x, err := strconv.ParseFloat(rec[col], 64)
+			if err != nil {
+				panic(err)
+			}
+
+			// Convert percent to proportion
+			y = append(y, x/100)
+
+			// Row indicators
+			for j := 0; j < nrow; j++ {
+				if j == row {
+					rowix[j] = append(rowix[j], 1)
+				} else {
+					rowix[j] = append(rowix[j], 0)
+				}
+			}
+
+			// Column indicators
+			for j := 0; j < ncol; j++ {
+				if j == col {
+					colix[j] = append(colix[j], 1)
+				} else {
+					colix[j] = append(colix[j], 0)
+				}
 			}
 		}
-		irow += len(z)
 	}
 
-	dx := []interface{}{row, col, y}
-	dz := dstream.NewFromFlat(dx, []string{"row", "col", "y"})
-	dz = formula.New("row + col", dz).Keep("y").Done()
-	dz = dstream.MemCopy(dz, true)
+	da := [][]float64{y}
+	da = append(da, rowix...)
+	da = append(da, colix[0:ncol-1]...) // Omit the final column indicator
 
-	return dstream.DropCols(dz, "col[8]")
+	varnames := []string{"y"}
+
+	for j := 0; j < nrow; j++ {
+		vn := fmt.Sprintf("row%d", j)
+		varnames = append(varnames, vn)
+	}
+
+	for j := 0; j < ncol-1; j++ {
+		vn := fmt.Sprintf("col%d", j)
+		varnames = append(varnames, vn)
+	}
+
+	xnames := varnames[1:]
+
+	return statmodel.NewDataset(da, varnames, "y", xnames)
 }
 
 func residPlot(lp, resid []float64, title, filename string) {
@@ -146,21 +178,29 @@ func main() {
 
 	data := setup()
 
+	fmt.Printf("%+v\n", data)
+
 	// Initial model, the scale parameter estimate is around 0.09.
-	model := glm.NewGLM(data, "y").Family(glm.NewFamily(glm.BinomialFamily))
-	model = model.DispersionForm(glm.DispersionFree)
-	model = model.Done()
+	c := glm.DefaultConfig()
+	c.Family = glm.NewFamily(glm.BinomialFamily)
+	c.DispersionForm = glm.DispersionFree
+	model := glm.NewGLM(data, c)
 	result := model.Fit()
+
+	fmt.Printf("%vf\n", result.Summary())
+
 	residPlot(result.LinearPredictor(nil), result.PearsonResid(nil),
 		"Default variance", "defvar.pdf")
 	fmt.Printf("%v\n", result.Summary())
 
-	// Initial model, the scale parameter estimate is close to 1.
-	model = glm.NewGLM(data, "y").Family(glm.NewFamily(glm.BinomialFamily))
-	model = model.DispersionForm(glm.DispersionFree)
-	model = model.VarFunc(&squaredbinom)
-	model = model.Done()
+	// Model with squared variance function, the scale parameter estimate is close to 1.
+	c = glm.DefaultConfig()
+	c.Family = glm.NewFamily(glm.BinomialFamily)
+	c.DispersionForm = glm.DispersionFree
+	c.VarFunc = squaredbinom
+	model = glm.NewGLM(data, c)
 	result = model.Fit()
+
 	residPlot(result.LinearPredictor(nil), result.PearsonResid(nil),
 		"Squared variance", "sqvar.pdf")
 	fmt.Printf("%v\n", result.Summary())
