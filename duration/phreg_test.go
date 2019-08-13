@@ -1,7 +1,6 @@
 package duration
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"math/rand"
@@ -10,139 +9,107 @@ import (
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/optimize"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/statmodel"
 )
 
-func data1() dstream.Dstream {
-
-	data := `Time,Status,X
-1,1,4
-1,1,2
-2,0,5
-3,0,6
-3,1,6
-4,0,5
-`
-
-	types := []dstream.VarType{
-		{"Time", dstream.Float64},
-		{"Status", dstream.Float64},
-		{"X", dstream.Float64},
-	}
-
-	b := bytes.NewBuffer([]byte(data))
-	da := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da = dstream.MemCopy(da, false)
-
-	return da
+type dataset struct {
+	data     [][]statmodel.Dtype
+	varnames []string
+	xnames   []string
 }
 
-func data2() dstream.Dstream {
-	data := `Entry,Time,Status,X1,X2,Stratum
-0,1,1,4,5,1
-1,2,1,2,2,1
-0,4,0,3,3,1
-1,5,1,5,1,1
-3,4,1,1,4,1
-2,5,0,3,2,2
-1,6,1,5,2,2
-2,4,1,4,5,2
-1,6,1,2,1,2
-3,4,0,6,8,2
-5,8,1,6,4,2
-`
+func data1() dataset {
 
-	types := []dstream.VarType{
-		{"Entry", dstream.Float64},
-		{"Time", dstream.Float64},
-		{"Status", dstream.Float64},
-		{"X1", dstream.Float64},
-		{"X2", dstream.Float64},
-		{"Stratum", dstream.Float64},
+	da := [][]statmodel.Dtype{
+		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
+		[]statmodel.Dtype{1, 1, 0, 0, 1, 0},
+		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
 	}
 
-	b := bytes.NewBuffer([]byte(data))
-	da := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da = dstream.MemCopy(da, false)
-	da = dstream.Convert(da, "Stratum", dstream.Uint64)
-	da = dstream.Regroup(da, "Stratum", true)
-	da = dstream.DropCols(da, "Stratum")
-	return da
+	return dataset{
+		data:     da,
+		varnames: []string{"Time", "Status", "X"},
+		xnames:   []string{"X"},
+	}
 }
 
-func data3() dstream.Dstream {
-	data := `Time,Status,X1,X2
-1,1,4,3
-1,1,2,2
-2,0,5,2
-3,0,6,0
-3,1,6,5
-4,0,5,4
-5,0,4,5
-5,1,3,6
-6,1,3,5
-7,1,5,4
-`
-	types := []dstream.VarType{
-		{"Time", dstream.Float64},
-		{"Status", dstream.Float64},
-		{"X1", dstream.Float64},
-		{"X2", dstream.Float64},
+func data2() dataset {
+
+	da := [][]statmodel.Dtype{
+		[]statmodel.Dtype{0, 1, 0, 1, 3, 2, 1, 2, 1, 3, 5},
+		[]statmodel.Dtype{1, 2, 4, 5, 4, 5, 6, 4, 6, 4, 8},
+		[]statmodel.Dtype{1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1},
+		[]statmodel.Dtype{4, 2, 3, 5, 1, 3, 5, 4, 2, 6, 6},
+		[]statmodel.Dtype{5, 2, 3, 1, 4, 2, 2, 5, 1, 8, 4},
+		[]statmodel.Dtype{1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
 	}
 
-	b := bytes.NewBuffer([]byte(data))
-	da := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da = dstream.MemCopy(da, false)
-	return da
+	return dataset{
+		data:     da,
+		varnames: []string{"Entry", "Time", "Status", "X1", "X2", "Stratum"},
+		xnames:   []string{"X1", "X2"},
+	}
 }
 
-func data4() dstream.Dstream {
+func data3() dataset {
 
-	data := `Time,Status,X1,X2
-1,1,4,3
-1,1,2,2
-2,0,5,2
-3,0,6,0
-3,1,6,5
-4,0,5,4
-5,0,4,5
-5,1,3,6
-6,1,3,5
-7,1,5,4
-`
-
-	types := []dstream.VarType{
-		{"Time", dstream.Float64},
-		{"Status", dstream.Float64},
-		{"X1", dstream.Float64},
-		{"X2", dstream.Float64},
+	da := [][]statmodel.Dtype{
+		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
+		[]statmodel.Dtype{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
+		[]statmodel.Dtype{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
+		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
 	}
 
-	b := bytes.NewBuffer([]byte(data))
-	da := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da = dstream.MemCopy(da, false)
+	return dataset{
+		data:     da,
+		varnames: []string{"Time", "Status", "X1", "X2"},
+		xnames:   []string{"X1", "X2"},
+	}
+}
 
-	return da
+func data4() dataset {
+
+	da := [][]statmodel.Dtype{
+		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
+		[]statmodel.Dtype{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
+		[]statmodel.Dtype{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
+		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
+	}
+
+	return dataset{
+		data:     da,
+		varnames: []string{"Time", "Status", "X1", "X2"},
+		xnames:   []string{"X1", "X2"},
+	}
 }
 
 // Basic check, no strata, weights, or entry times.
 func TestPhreg1(t *testing.T) {
 
 	da := data1()
-	ph := NewPHReg(da, "Time", "Status").Done()
+	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, nil)
 
-	da.Reset()
-	phr := NewPHReg(da, "Time", "Status").L2Weight([]float64{0}).Done()
+	// Create an equivalent model that has L2 penalty weights all set to zero.
+	config := DefaultPHRegConfig()
+	config.L2Penalty = map[string]float64{"X1": 0, "X2": 0}
+	phr := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, config)
 
-	if fmt.Sprintf("%v", ph.enter) != "[[[0 1 2 3 4 5] []]]" {
-		t.Fail()
-	}
-	if fmt.Sprintf("%v", ph.exit) != "[[[0 1 2] [3 4]]]" {
-		t.Fail()
-	}
-	if fmt.Sprintf("%v", ph.event) != "[[[0 1] [4]]]" {
-		t.Fail()
+	for _, pq := range []*PHReg{ph, phr} {
+		if fmt.Sprintf("%v", pq.stratumix) != "[[0 6]]" {
+			t.Fail()
+		}
+		if fmt.Sprintf("%v", pq.etimes) != "[[1 3]]" {
+			t.Fail()
+		}
+		if fmt.Sprintf("%v", pq.enter) != "[[[0 1 2 3 4 5] []]]" {
+			t.Fail()
+		}
+		if fmt.Sprintf("%v", pq.exit) != "[[[0 1 2] [3 4]]]" {
+			t.Fail()
+		}
+		if fmt.Sprintf("%v", pq.event) != "[[[0 1] [4]]]" {
+			t.Fail()
+		}
 	}
 
 	ll := -14.415134793348063
@@ -188,26 +155,68 @@ func TestPhreg1(t *testing.T) {
 
 func TestPhreg2(t *testing.T) {
 
-	da := data2()
-	ph := NewPHReg(da, "Time", "Status").Entry("Entry").Done()
+	config := DefaultPHRegConfig()
+	config.EntryVar = "Entry"
+	config.StratumVar = "Stratum"
 
-	if fmt.Sprintf("%v", ph.enter) != "[[[0 1 2 3] [] [4] []] [[0 1 2 3 4] [5] []]]" {
+	da := data2()
+	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, config)
+
+	expected := "[[1 2 4 5] [4 6 8]]"
+	if fmt.Sprintf("%v", ph.etimes) != expected {
+		fmt.Printf("etimes do not match\n")
+		fmt.Printf("Got      %v\n", ph.etimes)
+		fmt.Printf("Expected %v\n", expected)
 		t.Fail()
 	}
-	if fmt.Sprintf("%v", ph.exit) != "[[[0] [1] [2 4] [3]] [[0 2 4] [1 3] [5]]]" {
+
+	expected = "[[0 5] [5 11]]"
+	if fmt.Sprintf("%v", ph.stratumix) != expected {
+		fmt.Printf("Stratum boundaries do not match\n")
+		fmt.Printf("Got      %v\n", ph.stratumix)
+		fmt.Printf("Expected %v\n", expected)
 		t.Fail()
 	}
-	if fmt.Sprintf("%v", ph.event) != "[[[0] [1] [4] [3]] [[2] [1 3] [5]]]" {
+
+	expected = "[[[0 1 2 3] [] [4] []] [[5 6 7 8 9] [10] []]]"
+	if fmt.Sprintf("%v", ph.enter) != expected {
+		fmt.Printf("Entry times do not match\n")
+		fmt.Printf("Got      %v\n", ph.enter)
+		fmt.Printf("Expected %v\n", expected)
+		t.Fail()
+	}
+
+	expected = "[[[0] [1] [2 4] [3]] [[5 7 9] [6 8] [10]]]"
+	if fmt.Sprintf("%v", ph.exit) != expected {
+		fmt.Printf("Exit times do not match\n")
+		fmt.Printf("Got      %v\n", ph.exit)
+		fmt.Printf("Expected %v\n", expected)
+		t.Fail()
+	}
+
+	expected = "[[[0] [1] [4] [3]] [[7] [6 8] [10]]]"
+	if fmt.Sprintf("%v", ph.event) != expected {
+		fmt.Printf("Event times do not match\n")
+		fmt.Printf("Got      %v\n", ph.event)
+		fmt.Printf("Expected %v\n", expected)
 		t.Fail()
 	}
 
 	ll := -26.950282147164277
-	if math.Abs(ph.breslowLogLike([]float64{1, 2})-ll) > 1e-5 {
+	bl := ph.breslowLogLike([]float64{1, 2})
+	if math.Abs(bl-ll) > 1e-5 {
+		fmt.Printf("Breslow log-likelihood does not match\n")
+		fmt.Printf("Got      %v\n", bl)
+		fmt.Printf("Expected %v\n", ll)
 		t.Fail()
 	}
 
 	ll = -32.44699788270529
-	if math.Abs(ph.breslowLogLike([]float64{2, 1})-ll) > 1e-5 {
+	bl = ph.breslowLogLike([]float64{2, 1})
+	if math.Abs(bl-ll) > 1e-5 {
+		fmt.Printf("Breslow log-likelihood does not match\n")
+		fmt.Printf("Got      %v\n", bl)
+		fmt.Printf("Expected %v\n", ll)
 		t.Fail()
 	}
 
@@ -215,12 +224,18 @@ func TestPhreg2(t *testing.T) {
 	sc := []float64{-9.35565184, -8.0251037}
 	ph.breslowScore([]float64{1, 2}, score)
 	if !floats.EqualApprox(score, sc, 1e-5) {
+		fmt.Printf("Breslow score does not match\n")
+		fmt.Printf("Got      %v\n", score)
+		fmt.Printf("Expected %v\n", sc)
 		t.Fail()
 	}
 
 	sc = []float64{-13.5461984, -3.9178062}
 	ph.breslowScore([]float64{2, 1}, score)
 	if !floats.EqualApprox(score, sc, 1e-5) {
+		fmt.Printf("Breslow score does not match\n")
+		fmt.Printf("Got      %v\n", score)
+		fmt.Printf("Expected %v\n", sc)
 		t.Fail()
 	}
 
@@ -228,41 +243,45 @@ func TestPhreg2(t *testing.T) {
 	ph.breslowHess([]float64{1, 2}, hess)
 	hs := []float64{-1.95989147, 1.23657039, 1.23657039, -1.13182375}
 	if !floats.EqualApprox(hess, hs, 1e-5) {
+		fmt.Printf("Breslow Hessian does not match\n")
+		fmt.Printf("Got      %v\n", hess)
+		fmt.Printf("Expected %v\n", hs)
 		t.Fail()
 	}
 
 	ph.breslowHess([]float64{2, 1}, hess)
 	hs = []float64{-1.12887225, 1.21185482, 1.21185482, -2.73825289}
 	if !floats.EqualApprox(hess, hs, 1e-5) {
+		fmt.Printf("Breslow Hessian does not match\n")
+		fmt.Printf("Got      %v\n", hess)
+		fmt.Printf("Expected %v\n", hs)
 		t.Fail()
 	}
 }
 
 func TestPhreg3(t *testing.T) {
 
-	var time, status, x1, x2 []float64
-	var stratum []uint64
+	var time, status, stratum, x1, x2 []statmodel.Dtype
 
 	for i := 0; i < 100; i++ {
-		x1 = append(x1, float64(i%3))
-		x2 = append(x2, float64(i%7)-3)
-		stratum = append(stratum, uint64(i%10))
+		x1 = append(x1, statmodel.Dtype(i%3))
+		x2 = append(x2, statmodel.Dtype(i%7)-3)
+		stratum = append(stratum, statmodel.Dtype(i%10))
 		if i%5 == 0 {
 			status = append(status, 0)
 		} else {
 			status = append(status, 1)
 		}
-		time = append(time, 10/float64(4+i%3+i%7-3)+0.5*(float64(i%6)-2))
+		time = append(time, 10/statmodel.Dtype(4+i%3+i%7-3)+0.5*(statmodel.Dtype(i%6)-2))
 	}
 
-	dat := [][]interface{}{[]interface{}{time}, []interface{}{status},
-		[]interface{}{x1}, []interface{}{x2}, []interface{}{stratum}}
-	na := []string{"time", "status", "x1", "x2", "stratum"}
-	da := dstream.NewFromArrays(dat, na)
-	da = dstream.Regroup(da, "stratum", true)
-	da = dstream.DropCols(da, "stratum")
+	dat := [][]statmodel.Dtype{time, status, x1, x2, stratum}
+	varnames := []string{"time", "status", "x1", "x2", "stratum"}
 
-	ph := NewPHReg(da, "time", "status").Done()
+	c := DefaultPHRegConfig()
+	c.StratumVar = "stratum"
+
+	ph := NewPHReg(dat, varnames, "time", "status", []string{"x1", "x2"}, c)
 	result, err := ph.Fit()
 	if err != nil {
 		panic(err)
@@ -272,39 +291,42 @@ func TestPhreg3(t *testing.T) {
 	_ = result.Summary()
 
 	par := result.Params()
-	if !floats.EqualApprox(par, []float64{0.1096391, 0.61394886}, 1e-5) {
+	epar := []float64{0.1096391, 0.61394886}
+	if !floats.EqualApprox(par, epar, 1e-5) {
+		fmt.Printf("Parameter estimates differ:\n")
+		fmt.Printf("Got      %v\n", par)
+		fmt.Printf("Expected %v\n", epar)
 		t.Fail()
 	}
 
 	se := result.StdErr()
-	if !floats.EqualApprox(se, []float64{0.17171136, 0.09304276}, 1e-5) {
+	ese := []float64{0.17171136, 0.09304276}
+	if !floats.EqualApprox(se, ese, 1e-5) {
+		fmt.Printf("Standard errors differ:\n")
+		fmt.Printf("Got      %v\n", se)
+		fmt.Printf("Expected %v\n", ese)
 		t.Fail()
 	}
 }
 
-func TestPhregMethods(t *testing.T) {
+func TestPhregOptMethods(t *testing.T) {
 
-	var time, status, x1, x2 []float64
-	var stratum []uint64
+	var time, status, stratum, x1, x2 []statmodel.Dtype
 
 	for i := 0; i < 100; i++ {
-		x1 = append(x1, float64(i%3))
-		x2 = append(x2, float64(i%7)-3)
-		stratum = append(stratum, uint64(i%10))
+		x1 = append(x1, statmodel.Dtype(i%3))
+		x2 = append(x2, statmodel.Dtype(i%7)-3)
+		stratum = append(stratum, statmodel.Dtype(i%10))
 		if i%5 == 0 {
 			status = append(status, 0)
 		} else {
 			status = append(status, 1)
 		}
-		time = append(time, 10/float64(4+i%3+i%7-3)+0.5*(float64(i%6)-2))
+		time = append(time, 10/statmodel.Dtype(4+i%3+i%7-3)+0.5*(statmodel.Dtype(i%6)-2))
 	}
 
-	dat := [][]interface{}{[]interface{}{time}, []interface{}{status},
-		[]interface{}{x1}, []interface{}{x2}, []interface{}{stratum}}
-	na := []string{"time", "status", "x1", "x2", "stratum"}
-	da := dstream.NewFromArrays(dat, na)
-	da = dstream.Regroup(da, "stratum", true)
-	da = dstream.DropCols(da, "stratum")
+	dat := [][]statmodel.Dtype{time, status, x1, x2, stratum}
+	varnames := []string{"time", "status", "x1", "x2", "stratum"}
 
 	var par [][]float64
 	var std [][]float64
@@ -312,11 +334,14 @@ func TestPhregMethods(t *testing.T) {
 		new(optimize.BFGS),
 		new(optimize.LBFGS),
 		new(optimize.CG),
-		//new(optimize.Newton),
+		//new(optimize.Newton), TODO
 		new(optimize.GradientDescent),
 		new(optimize.NelderMead),
 	} {
-		ph := NewPHReg(da, "time", "status").Optimizer(m).Done()
+		c := DefaultPHRegConfig()
+		c.Optimizer = m
+		c.StratumVar = "stratum"
+		ph := NewPHReg(dat, varnames, "time", "status", []string{"x1", "x2"}, c)
 		result, err := ph.Fit()
 		if err != nil {
 			panic(err)
@@ -325,39 +350,20 @@ func TestPhregMethods(t *testing.T) {
 		std = append(std, result.StdErr())
 	}
 
+	// Compare eachj method to the first method
 	for i := 1; i < len(par); i++ {
 		if !floats.EqualApprox(par[0], par[i], 1e-6) {
+			fmt.Printf("Parameter estimates differ:\n")
+			fmt.Printf("Got       %v\n", par[i])
+			fmt.Printf("Expected %v\n", par[0])
 			t.Fail()
 		}
 		if !floats.EqualApprox(std[0], std[i], 1e-6) {
+			fmt.Printf("Standard errors differ:\n")
+			fmt.Printf("Got       %v\n", std[i])
+			fmt.Printf("Expected %v\n", std[0])
 			t.Fail()
 		}
-	}
-}
-
-// Test whether the results are the same whether we scale or do not
-// scale the covariates.
-func TestPhregScaling(t *testing.T) {
-
-	da := data2()
-	ph1 := NewPHReg(da, "Time", "Status").Entry("Entry").Done()
-	ph2 := NewPHReg(da, "Time", "Status").Entry("Entry").CovariateScale(statmodel.L2Norm).Done()
-
-	r1, err := ph1.Fit()
-	if err != nil {
-		panic(err)
-	}
-
-	r2, err := ph2.Fit()
-	if err != nil {
-		panic(err)
-	}
-
-	if !floats.EqualApprox(r1.Params(), r2.Params(), 1e-5) {
-		t.Fail()
-	}
-	if !floats.EqualApprox(r1.StdErr(), r2.StdErr(), 1e-5) {
-		t.Fail()
 	}
 }
 
@@ -368,8 +374,9 @@ func TestPhregRegularized(t *testing.T) {
 
 	for j, wt := range []float64{0.1, 0.2, 0.3} {
 
-		l1wgts := []float64{wt, wt}
-		ph := NewPHReg(da, "Time", "Status").L1Weight(l1wgts).Done()
+		c := DefaultPHRegConfig()
+		c.L1Penalty = map[string]float64{"X1": wt, "X2": wt}
+		ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, c)
 		rslt, err := ph.Fit()
 		if err != nil {
 			panic(err)
@@ -380,6 +387,8 @@ func TestPhregRegularized(t *testing.T) {
 			fmt.Printf("Expected=%v\n", pe[j])
 			t.Fail()
 		}
+
+		// Smoke test
 		_ = rslt.Summary().String()
 	}
 }
@@ -388,11 +397,14 @@ func TestPhregFocus(t *testing.T) {
 
 	da := data4()
 	wt := 0.1
-	wgt := []float64{wt, wt}
-	ph := NewPHReg(da, "Time", "Status").L1Weight(wgt).L2Weight(wgt).Done()
 
-	phf := ph.GetFocusable()
-	phf.Focus(0, []float64{1, 1}, wt)
+	c := DefaultPHRegConfig()
+	c.L1Penalty = map[string]float64{"x1": wt, "x2": wt}
+	c.L2Penalty = map[string]float64{"x1": wt, "x2": wt}
+
+	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, c)
+
+	phf := ph.Focus(0, []float64{1, 1}, nil)
 
 	// The score at (1, 1) of the unprojected model
 	score2d := make([]float64, 2)
@@ -440,44 +452,30 @@ func TestPhregFocus(t *testing.T) {
 
 func TestWeights(t *testing.T) {
 
-	data1 := `Time,Status,X,W
-1,1,4,1
-1,1,2,2
-2,0,5,1
-3,0,6,2
-3,1,6,1
-4,0,5,2
-`
-	data2 := `Time,Status,X,W
-1,1,4,1
-1,1,2,1
-1,1,2,1
-2,0,5,1
-3,0,6,1
-3,0,6,1
-3,1,6,1
-4,0,5,1
-4,0,5,1
-`
-
-	types := []dstream.VarType{
-		{"Time", dstream.Float64},
-		{"Status", dstream.Float64},
-		{"X", dstream.Float64},
-		{"W", dstream.Float64},
+	// data1 and data2 are equivalent after taking the weights into account
+	data1 := [][]statmodel.Dtype{
+		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
+		[]statmodel.Dtype{1, 1, 0, 0, 1, 0},
+		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
+		[]statmodel.Dtype{1, 2, 1, 2, 1, 2},
 	}
 
-	b := bytes.NewBuffer([]byte(data1))
-	da1 := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da1 = dstream.MemCopy(da1, false)
+	varnames := []string{"Time", "Status", "X", "W"}
+	xnames := []string{"X"}
 
-	b = bytes.NewBuffer([]byte(data2))
-	da2 := dstream.FromCSV(b).SetTypes(types).HasHeader().Done()
-	da2 = dstream.MemCopy(da2, false)
+	data2 := [][]statmodel.Dtype{
+		[]statmodel.Dtype{1, 1, 1, 2, 3, 3, 3, 4, 4},
+		[]statmodel.Dtype{1, 1, 1, 0, 0, 0, 1, 0, 0},
+		[]statmodel.Dtype{4, 2, 2, 5, 6, 6, 6, 5, 5},
+		[]statmodel.Dtype{1, 1, 1, 1, 1, 1, 1, 1, 1},
+	}
 
-	ph1 := NewPHReg(da1, "Time", "Status").Weight("W").Done()
-	ph2 := NewPHReg(dstream.DropCols(da2, "W"), "Time", "Status").Done()
-	ph3 := NewPHReg(da2, "Time", "Status").Weight("W").Done()
+	c := DefaultPHRegConfig()
+	c.WeightVar = "W"
+
+	ph1 := NewPHReg(data1, varnames, "Time", "Status", xnames, c)
+	ph2 := NewPHReg(data2[0:3], varnames[0:3], "Time", "Status", xnames, nil)
+	ph3 := NewPHReg(data2, varnames, "Time", "Status", xnames, c)
 
 	rslt1, err := ph1.Fit()
 	if err != nil {
@@ -516,37 +514,33 @@ func TestBaselineHaz(t *testing.T) {
 	n := 10000
 	rand.Seed(3909)
 
+	time := make([]statmodel.Dtype, n)
+	status := make([]statmodel.Dtype, n)
+	x := make([]statmodel.Dtype, n)
+
 	// kw is the Weibull shape parameter.  The cumulative baseline hazard function
 	// evaluated at time t is t^kw.
 	for _, kw := range []float64{1, 2} {
 
-		x := make([]float64, n)
-		tim := make([]float64, n)
-		evt := make([]float64, n)
-
 		// Create a covariate, but there is no covariate effect in this test.
 		for i := range x {
-			x[i] = 0.2 * rand.NormFloat64()
+			x[i] = statmodel.Dtype(0.2 * rand.NormFloat64())
 		}
 
-		for i := range tim {
-			tim[i] = math.Pow(-math.Log(rand.Float64()), 1/kw)
-			t := math.Pow(-math.Log(rand.Float64()), 1/kw)
-			if tim[i] > t {
-				tim[i] = t
+		for i := range time {
+			time[i] = statmodel.Dtype(math.Pow(-math.Log(rand.Float64()), 1/kw))
+			t := statmodel.Dtype(math.Pow(-math.Log(rand.Float64()), 1/kw))
+			if time[i] > t {
+				time[i] = t
+				status[i] = 0
 			} else {
-				evt[i] = 1
+				status[i] = 1
 			}
 		}
 
-		ar := make([][]interface{}, 3)
-		ar[0] = []interface{}{tim}
-		ar[1] = []interface{}{evt}
-		ar[2] = []interface{}{x}
+		dat := [][]statmodel.Dtype{time, status, x}
 
-		df := dstream.NewFromArrays(ar, []string{"tim", "evt", "x"})
-
-		model := NewPHReg(df, "tim", "evt").Done()
+		model := NewPHReg(dat, []string{"time", "status", "x"}, "time", "status", []string{"x"}, nil)
 		result, err := model.Fit()
 		if err != nil {
 			panic(err)
@@ -565,9 +559,13 @@ func TestBaselineHaz(t *testing.T) {
 		rd /= float64(len(bch))
 
 		if math.Abs(ra-kw) > 0.07 {
+			fmt.Printf("Got      %v\n", ra)
+			fmt.Printf("Expected %v\n", kw)
 			t.Fail()
 		}
 		if rd > 0.6 {
+			fmt.Printf("Got      %v\n", rd)
+			fmt.Printf("Expected < 0.6\n")
 			t.Fail()
 		}
 	}

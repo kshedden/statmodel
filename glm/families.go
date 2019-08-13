@@ -3,6 +3,8 @@ package glm
 import (
 	"fmt"
 	"math"
+
+	"github.com/kshedden/statmodel/statmodel"
 )
 
 // FamilyType is the type of GLM family used in a model.
@@ -23,12 +25,12 @@ const (
 // are the data, the mean values, the weights, the scale parameter, and the 'exact flag'.
 // If the exact flag is false, multiplicative factors that are constant with respect to
 // the mean may be omitted.  The weights may be nil in which case all weights are taken to be 1.
-type LogLikeFunc func([]float64, []float64, []float64, float64, bool) float64
+type LogLikeFunc func([]statmodel.Dtype, []float64, []statmodel.Dtype, float64, bool) float64
 
 // DevianceFunc evaluates and returns the deviance for a GLM.  The arguments
 // are the data, the mean values, the weights, and the scale parameter.  The weights
 // may be nil in which case all weights are taken to be 1.
-type DevianceFunc func([]float64, []float64, []float64, float64) float64
+type DevianceFunc func([]statmodel.Dtype, []float64, []statmodel.Dtype, float64) float64
 
 // Family represents a generalized linear model family.
 type Family struct {
@@ -161,23 +163,23 @@ func (fam *Family) IsValidLink(link *Link) bool {
 	return false
 }
 
-func poissonLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
+func poissonLogLike(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 
 	var ll float64
 	var w float64 = 1
 	for i := range y {
 		if wt != nil {
-			w = wt[i]
+			w = float64(wt[i])
 		}
-		ll += w * (y[i]*math.Log(mn[i]) - mn[i])
+		ll += w * (float64(y[i])*math.Log(mn[i]) - mn[i])
 	}
 
 	if exact {
 		for i := range y {
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
-			g, _ := math.Lgamma(y[i] + 1)
+			g, _ := math.Lgamma(float64(y[i]) + 1)
 			ll -= w * g
 		}
 	}
@@ -185,28 +187,28 @@ func poissonLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
 	return ll
 }
 
-func binomialLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
+func binomialLogLike(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 	var ll float64
 	var w float64 = 1
 	for i := range y {
 		if wt != nil {
-			w = wt[i]
+			w = float64(wt[i])
 		}
 		r := mn[i]/(1-mn[i]) + 1e-200
-		ll += w * (y[i]*math.Log(r) + math.Log(1-mn[i]))
+		ll += w * (float64(y[i])*math.Log(r) + math.Log(1-mn[i]))
 	}
 	return ll
 }
 
-func gaussianLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
+func gaussianLogLike(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 	var ll float64
 	var w float64 = 1
 	var ws float64
 	for i := range y {
 		if wt != nil {
-			w = wt[i]
+			w = float64(wt[i])
 		}
-		r := y[i] - mn[i]
+		r := float64(y[i]) - mn[i]
 		ll -= w * r * r / (2 * scale)
 		ws += w
 	}
@@ -214,26 +216,26 @@ func gaussianLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
 	return ll
 }
 
-func gammaLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
+func gammaLogLike(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 
 	var ll float64
 	var w float64 = 1
 	for i := range y {
 		if wt != nil {
-			w = wt[i]
+			w = float64(wt[i])
 		}
 
-		v := y[i]/mn[i] + math.Log(mn[i])
+		v := float64(y[i])/mn[i] + math.Log(mn[i])
 		ll -= w * v / scale
 	}
 
 	if exact {
 		for i := range y {
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
 
-			v := (scale - 1) * math.Log(y[i])
+			v := (scale - 1) * math.Log(float64(y[i]))
 			g, _ := math.Lgamma(1 / scale)
 			v += math.Log(scale) + scale*g
 			ll -= w * v / scale
@@ -243,18 +245,18 @@ func gammaLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
 	return ll
 }
 
-func invGaussLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
+func invGaussLogLike(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 
 	var ll float64
 	var w float64 = 1
 	var ws float64
 	for i := range y {
 		if wt != nil {
-			w = wt[i]
+			w = float64(wt[i])
 		}
 
-		r := y[i] - mn[i]
-		v := r * r / (y[i] * mn[i] * mn[i] * scale)
+		r := float64(y[i]) - mn[i]
+		v := r * r / (float64(y[i]) * mn[i] * mn[i] * scale)
 
 		ll -= 0.5 * w * v
 		ws += w
@@ -264,27 +266,27 @@ func invGaussLogLike(y, mn, wt []float64, scale float64, exact bool) float64 {
 	if exact {
 		for i := range y {
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
-			ll -= 0.5 * w * math.Log(scale*y[i]*y[i]*y[i])
+			ll -= 0.5 * w * math.Log(scale*float64(y[i]*y[i]*y[i]))
 		}
 	}
 
 	return ll
 }
 
-func poissonDeviance(y, mn, wgt []float64, scale float64) float64 {
+func poissonDeviance(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 	var dev float64
 	var w float64 = 1
 
 	for i := range y {
 		if wgt != nil {
-			w = wgt[i]
+			w = float64(wgt[i])
 		}
 
 		if y[i] > 0 {
-			dev += 2 * w * y[i] * math.Log(y[i]/mn[i])
+			dev += 2 * w * float64(y[i]) * math.Log(float64(y[i])/mn[i])
 		}
 	}
 	dev /= scale
@@ -292,67 +294,67 @@ func poissonDeviance(y, mn, wgt []float64, scale float64) float64 {
 	return dev
 }
 
-func binomialDeviance(y, mn, wgt []float64, scale float64) float64 {
+func binomialDeviance(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 	var dev float64
 	var w float64 = 1
 
 	for i := range y {
 		if wgt != nil {
-			w = wgt[i]
+			w = float64(wgt[i])
 		}
 
-		dev -= 2 * w * (y[i]*math.Log(mn[i]) + (1-y[i])*math.Log(1-mn[i]))
+		dev -= 2 * w * (float64(y[i])*math.Log(mn[i]) + (1-float64(y[i]))*math.Log(1-mn[i]))
 	}
 
 	return dev
 }
 
-func gammaDeviance(y, mn, wgt []float64, scale float64) float64 {
+func gammaDeviance(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 	var dev float64
 	var w float64 = 1
 
 	for i := range y {
 		if wgt != nil {
-			w = wgt[i]
+			w = float64(wgt[i])
 		}
 
-		dev += 2 * w * ((y[i]-mn[i])/mn[i] - math.Log(y[i]/mn[i]))
+		dev += 2 * w * ((float64(y[i])-mn[i])/mn[i] - math.Log(float64(y[i])/mn[i]))
 	}
 
 	return dev
 }
 
-func invGaussianDeviance(y, mn, wgt []float64, scale float64) float64 {
+func invGaussianDeviance(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 	var dev float64
 	var w float64 = 1
 
 	for i := range y {
 		if wgt != nil {
-			w = wgt[i]
+			w = float64(wgt[i])
 		}
 
-		r := y[i] - mn[i]
-		dev += w * (r * r / (y[i] * mn[i] * mn[i]))
+		r := float64(y[i]) - mn[i]
+		dev += w * (r * r / (float64(y[i]) * mn[i] * mn[i]))
 	}
 	dev /= scale
 
 	return dev
 }
 
-func gaussianDeviance(y, mn, wgt []float64, scale float64) float64 {
+func gaussianDeviance(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 	var dev float64
 	var w float64 = 1
 
 	for i := range y {
 		if wgt != nil {
-			w = wgt[i]
+			w = float64(wgt[i])
 		}
 
-		r := y[i] - mn[i]
+		r := float64(y[i]) - mn[i]
 		dev += w * r * r
 	}
 	dev /= scale
@@ -373,15 +375,15 @@ func NewTweedieFamily(pw float64, link *Link) *Family {
 		link = NewPowerLink(1 - pw)
 	}
 
-	loglike := func(y, mn, wt []float64, scale float64, exact bool) float64 {
+	loglike := func(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 		var ll float64
 		var w float64 = 1
 		for i := range y {
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
 			lmn := math.Log(mn[i])
-			ll += w * (y[i]*math.Exp((1-pw)*lmn)/(1-pw) - math.Exp((2-pw)*lmn)/(2-pw))
+			ll += w * (float64(y[i])*math.Exp((1-pw)*lmn)/(1-pw) - math.Exp((2-pw)*lmn)/(2-pw))
 		}
 		ll /= scale
 
@@ -391,7 +393,7 @@ func NewTweedieFamily(pw float64, link *Link) *Family {
 			lscale := math.Log(scale)
 			for i := range y {
 				if wt != nil {
-					w = wt[i]
+					w = float64(wt[i])
 				}
 
 				// Scaling factor is 1 in this case
@@ -399,8 +401,8 @@ func NewTweedieFamily(pw float64, link *Link) *Family {
 					continue
 				}
 
-				lz := -alp*math.Log(y[i]) + alp*math.Log(pw-1) - math.Log(2-pw) - (1-alp)*lscale
-				kf := math.Pow(y[i], 2-pw) / (scale * float64(2-pw))
+				lz := -alp*math.Log(float64(y[i])) + alp*math.Log(pw-1) - math.Log(2-pw) - (1-alp)*lscale
+				kf := math.Pow(float64(y[i]), 2-pw) / (scale * float64(2-pw))
 				k := int(math.Round(kf))
 				if k < 1 {
 					k = 1
@@ -429,7 +431,7 @@ func NewTweedieFamily(pw float64, link *Link) *Family {
 					ws += math.Exp(w1 - w0)
 				}
 
-				ll -= w * math.Log(y[i])
+				ll -= w * math.Log(float64(y[i]))
 				ll += w * (w0 + math.Log(ws))
 			}
 		}
@@ -437,18 +439,18 @@ func NewTweedieFamily(pw float64, link *Link) *Family {
 		return ll
 	}
 
-	deviance := func(y, mn, wgt []float64, scale float64) float64 {
+	deviance := func(y []statmodel.Dtype, mn []float64, wgt []statmodel.Dtype, scale float64) float64 {
 
 		var dev float64
 		var w float64 = 1
 
 		for i := range y {
 			if wgt != nil {
-				w = wgt[i]
+				w = float64(wgt[i])
 			}
 
-			u1 := math.Pow(y[i], 2-pw) / ((1 - pw) * (2 - pw))
-			u2 := y[i] * math.Pow(mn[i], 1-pw) / (1 - pw)
+			u1 := math.Pow(float64(y[i]), 2-pw) / ((1 - pw) * (2 - pw))
+			u2 := float64(y[i]) * math.Pow(mn[i], 1-pw) / (1 - pw)
 			u3 := math.Pow(mn[i], 2-pw) / (2 - pw)
 			dev += 2 * w * (u1 - u2 + u3)
 		}
@@ -481,7 +483,7 @@ func lgamma(x float64) float64 {
 // binomial family, using the given link function.
 func NewNegBinomFamily(alpha float64, link *Link) *Family {
 
-	loglike := func(y, mn, wt []float64, scale float64, exact bool) float64 {
+	loglike := func(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64, exact bool) float64 {
 
 		var ll float64
 		var w float64 = 1
@@ -491,18 +493,19 @@ func NewNegBinomFamily(alpha float64, link *Link) *Family {
 		link.Link(mn, lp)
 		c3, _ := math.Lgamma(1 / alpha)
 
-		for i := 0; i < len(y); i++ {
+		for i := range y {
+
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
 
 			elp := math.Exp(lp[i])
 
-			c1, _ := math.Lgamma(y[i] + 1/alpha)
-			c2, _ := math.Lgamma(y[i] + 1)
+			c1, _ := math.Lgamma(float64(y[i]) + 1/alpha)
+			c2, _ := math.Lgamma(float64(y[i]) + 1)
 			c := c1 - c2 - c3
 
-			v := y[i] * math.Log(alpha*elp/(1+alpha*elp))
+			v := float64(y[i]) * math.Log(alpha*elp/(1+alpha*elp))
 			v -= math.Log(1+alpha*elp) / alpha
 
 			ll += w * (v + c)
@@ -511,7 +514,7 @@ func NewNegBinomFamily(alpha float64, link *Link) *Family {
 		return ll
 	}
 
-	deviance := func(y, mn, wt []float64, scale float64) float64 {
+	deviance := func(y []statmodel.Dtype, mn []float64, wt []statmodel.Dtype, scale float64) float64 {
 
 		var dev float64
 		var w float64 = 1
@@ -522,13 +525,13 @@ func NewNegBinomFamily(alpha float64, link *Link) *Family {
 
 		for i := 0; i < len(y); i++ {
 			if wt != nil {
-				w = wt[i]
+				w = float64(wt[i])
 			}
 
 			if y[i] == 1 {
-				z1 := y[i] * math.Log(y[i]/mn[i])
-				z2 := (1 + alpha*y[i]) / alpha
-				z2 *= math.Log((1 + alpha*y[i]) / (1 + alpha*mn[i]))
+				z1 := float64(y[i]) * math.Log(float64(y[i])/mn[i])
+				z2 := (1 + alpha*float64(y[i])) / alpha
+				z2 *= math.Log((1 + alpha*float64(y[i])) / (1 + alpha*mn[i]))
 				dev += w * (z1 - z2)
 			} else {
 				dev += 2 * w * math.Log(1+alpha*mn[i]) / alpha

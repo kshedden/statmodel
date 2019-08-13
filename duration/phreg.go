@@ -4,6 +4,7 @@ package duration
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -11,7 +12,6 @@ import (
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/optimize"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/statmodel"
 )
 
@@ -42,31 +42,35 @@ func (p *PHParameter) Clone() statmodel.Parameter {
 // censored data.
 type PHReg struct {
 
+	// The names of the variables.  The order agrees with the order of 'data'.
+	varnames []string
+
 	// The data to which the model is fit
-	data dstream.Dstream
+	data [][]statmodel.Dtype
 
 	// Starting values, optional
 	start []float64
 
 	// Name and position of the event variable
-	statusvar    string
-	statusvarpos int
+	statuspos int
 
 	// Name and position of the time variable
-	timevar    string
-	timevarpos int
+	timepos int
 
 	// Name and position of the entry time variable
-	entryvar    string
-	entryvarpos int
+	entrypos int
 
 	// Name and position of an offset variable
-	offsetvar    string
-	offsetvarpos int
+	offsetpos int
 
-	// Name and positin of a case weight variable
-	weightvarpos int
-	weightvar    string
+	// Name and position of a case weight variable
+	weightpos int
+
+	// Name and position of a stratum variable
+	stratumpos int
+
+	// Start and end position of the strata
+	stratumix [][2]int
 
 	// The sorted times at which events occur in each stratum
 	etimes [][]float64
@@ -83,33 +87,22 @@ type PHReg struct {
 	// the jth distinct time in stratum i
 	exit [][][]int
 
-	// The L2 norms of the centered covariates.  If norm=true,
-	// calculations are done on normalized covariates.
-	xscale []float64
-
-	// The mean of every covariate, used to center the covariates.
-	// Since there is no intercept in a Cox model, the covariates
-	// can be centered without further adjustment.
-	xmean []float64
-
-	// The approach for scaling the covariates
-	scaletype statmodel.ScaleType
-
 	// The sum of covariates with events in each stratum
 	sumx [][]float64
 
 	// L2 (ridge) weights for each variable
-	l2wgt []float64
+	l2wgtMap map[string]float64
+	l2wgt    []float64
 
 	// L1 (lasso) weights for each variable
-	l1wgt []float64
+	l1wgtMap map[string]float64
+	l1wgt    []float64
 
 	// The positions of the covariates in the Dstream
 	xpos []int
 
-	// If skip[s][i] is true, case i within stratum j is skipped
-	// since it is censored before the first event.
-	skip []map[int]bool
+	// If skip[i] is true, case i is skipped since it is censored before the first event.
+	skip []bool
 
 	// Optimization settings
 	settings *optimize.Settings
@@ -117,8 +110,14 @@ type PHReg struct {
 	// Optimization method
 	method optimize.Method
 
-	// Indicates that Done has already been called
-	done bool
+	log *log.Logger
+
+	nslices [][]float64
+}
+
+// NumObs returns the number of observations in the data set.
+func (ph *PHReg) NumObs() int {
+	return len(ph.data[0])
 }
 
 // NumParams returns the number of model parameters (regression coefficients).
@@ -126,38 +125,9 @@ func (ph *PHReg) NumParams() int {
 	return len(ph.xpos)
 }
 
-// Weight sets the case weights to be used when fitting the model.
-func (ph *PHReg) Weight(name string) *PHReg {
-	ph.weightvar = name
-	return ph
-}
-
-// L2Weight sets L2 (ridge) weights to be used when fitting the model.
-// When using regularization, consider calling ScaleType so that the
-// penalties have the same impact on all covariates.
-func (ph *PHReg) L2Weight(w []float64) *PHReg {
-	ph.l2wgt = w
-	return ph
-}
-
-// L1Weight sets L1 (lasso) weights to be used when fitting the model.
-// When using regularization, consider calling ScaleType so that the
-// penalties have the same impact on all covariates.
-func (ph *PHReg) L1Weight(w []float64) *PHReg {
-	ph.l1wgt = w
-	return ph
-}
-
-// CovariateScale sets the scaling method for the covariates.
-func (ph *PHReg) CovariateScale(scaletype statmodel.ScaleType) *PHReg {
-	ph.scaletype = scaletype
-	return ph
-}
-
-// Offset sets the name of an offset variable.
-func (ph *PHReg) Offset(off string) *PHReg {
-	ph.offsetvar = off
-	return ph
+// DataSet returns the data stream that is used to fit the model.
+func (ph *PHReg) Dataset() [][]statmodel.Dtype {
+	return ph.data
 }
 
 // Xpos return the positions of the covariates in the model's dstream.
@@ -165,211 +135,255 @@ func (ph *PHReg) Xpos() []int {
 	return ph.xpos
 }
 
-// OptSettings allows the caller to provide an optimization settings
-// value.
-func (ph *PHReg) OptSettings(s *optimize.Settings) *PHReg {
-	ph.settings = s
-	return ph
+// PHRegConfig defines configuration parameters for a proportional hazards regression..
+type PHRegConfig struct {
+
+	// A logger to which logging information is wreitten
+	Log *log.Logger
+
+	// FitMethod is the numerical approach for fitting the model.  Allowed
+	// values include IRLS, gradient, and coordinate.
+	// TODO relevant?
+	FitMethod string
+
+	// Start contains starting values for the regression parameter estimates
+	Start []float64
+
+	// WeightVar is the name of the variable for frequency-weighting the cases, if an empty
+	// string, all weights are equal to 1.
+	WeightVar string
+
+	// OffsetVar is the name of a variable that defines an offset.
+	OffsetVar string
+
+	// StratumVar is the name of a variable that defines strata.
+	StratumVar string
+
+	// EntryVar is the name of a variable that defines entry (left truncation) times.
+	EntryVar string
+
+	L1Penalty map[string]float64
+	L2Penalty map[string]float64
+
+	Optimizer optimize.Method
+}
+
+// DefaultPHRegConfig returns a default configuration struct for a proportional hazards regression.
+func DefaultPHRegConfig() *PHRegConfig {
+
+	return &PHRegConfig{}
+}
+
+// zerodtype sets all elements of the slice to 0
+func zerodtype(x []statmodel.Dtype) {
+	for i := range x {
+		x[i] = 0
+	}
 }
 
 // NewPHReg returns a PHReg value that can be used to fit a
-// proportional hazards regression model.  Call configuration methods
-// (Entry, etc.) then call Done before fitting.
-func NewPHReg(data dstream.Dstream, time, status string) *PHReg {
-	ph := &PHReg{
-		data:      data,
-		timevar:   time,
-		statusvar: status,
+// proportional hazards regression model.
+func NewPHReg(data [][]statmodel.Dtype, varnames []string, time, status string, xnames []string, config *PHRegConfig) *PHReg {
+
+	if config == nil {
+		config = DefaultPHRegConfig()
 	}
 
+	if len(varnames) != len(data) {
+		msg := fmt.Sprintf("data and varnames have different lengths\n")
+		panic(msg)
+	}
+
+	pos := make(map[string]int)
+	for i, v := range varnames {
+		pos[v] = i
+	}
+
+	timepos, ok := pos[time]
+	if !ok {
+		msg := fmt.Sprintf("'%s' not found\n", time)
+		panic(msg)
+	}
+
+	statuspos, ok := pos[status]
+	if !ok {
+		msg := fmt.Sprintf("'%s' not found\n", status)
+		panic(msg)
+	}
+
+	var xpos []int
+	for _, xna := range xnames {
+		xp, ok := pos[xna]
+		if !ok {
+			msg := fmt.Sprintf("'%s' not found\n", xna)
+			panic(msg)
+		}
+		xpos = append(xpos, xp)
+	}
+
+	getpos := func(vn string) int {
+		if vn == "" {
+			return -1
+		}
+		var loc int
+		var ok bool
+		loc, ok = pos[vn]
+		if !ok {
+			msg := fmt.Sprintf("'%s' not found\n", vn)
+			panic(msg)
+		}
+		return loc
+	}
+
+	weightpos := getpos(config.WeightVar)
+	stratumpos := getpos(config.StratumVar)
+	offsetpos := getpos(config.OffsetVar)
+	entrypos := getpos(config.EntryVar)
+
+	penToSlice := func(m map[string]float64) []float64 {
+		if m == nil || len(m) == 0 {
+			return nil
+		}
+		v := make([]float64, len(xpos))
+		for j, k := range xpos {
+			v[j] = m[varnames[k]]
+		}
+		return v
+	}
+
+	ph := &PHReg{
+		data:       data,
+		varnames:   varnames,
+		timepos:    timepos,
+		statuspos:  statuspos,
+		xpos:       xpos,
+		weightpos:  weightpos,
+		offsetpos:  offsetpos,
+		entrypos:   entrypos,
+		stratumpos: stratumpos,
+		start:      config.Start,
+		l1wgt:      penToSlice(config.L1Penalty),
+		l2wgt:      penToSlice(config.L2Penalty),
+		l1wgtMap:   config.L1Penalty,
+		l2wgtMap:   config.L2Penalty,
+		log:        config.Log,
+	}
+
+	ph.init()
+
 	return ph
 }
 
-// Entry sets the delayed entry times to be used when fitting the model.
-func (ph *PHReg) Entry(entry string) *PHReg {
-	ph.entryvar = entry
-	return ph
-}
-
-// Start sets starting values to be used when fitting the model.
-func (ph *PHReg) Start(start []float64) *PHReg {
-	ph.start = start
-	return ph
-}
-
-// Done signals that configuration is complete and the model can be fit.
-func (ph *PHReg) Done() *PHReg {
-	ph.findvars()
-	ph.doScale()
+func (ph *PHReg) init() {
+	ph.sortByStratum()
 	ph.setupTimes()
 	ph.setupCovs()
-
-	if ph.scaletype != statmodel.NoScale && ph.start != nil {
-		for j := range ph.start {
-			ph.start[j] *= ph.xscale[j]
-		}
-	}
-
-	ph.done = true
-	return ph
 }
 
-func (ph *PHReg) findvars() {
-	ph.statusvarpos, ph.timevarpos, ph.entryvarpos, ph.offsetvarpos, ph.weightvarpos = -1, -1, -1, -1, -1
-	for i, na := range ph.data.Names() {
-		switch na {
-		case ph.statusvar:
-			ph.statusvarpos = i
-		case ph.timevar:
-			ph.timevarpos = i
-		case ph.entryvar:
-			ph.entryvarpos = i
-		case ph.offsetvar:
-			ph.offsetvarpos = i
-		case ph.weightvar:
-			ph.weightvarpos = i
-		default:
-			// Everything else is a covariate
-			ph.xpos = append(ph.xpos, i)
-		}
-	}
-
-	if ph.timevarpos == -1 {
-		msg := fmt.Sprintf("Time variable '%s' not found\n", ph.timevar)
-		panic(msg)
-	}
-	if ph.statusvarpos == -1 {
-		msg := fmt.Sprintf("Event status variable '%s' not found\n", ph.statusvar)
-		panic(msg)
-	}
-	if ph.entryvar != "" && ph.entryvarpos == -1 {
-		msg := fmt.Sprintf("Entry variable '%s' not found\n", ph.entryvar)
-		panic(msg)
-	}
-	if ph.offsetvar != "" && ph.offsetvarpos == -1 {
-		msg := fmt.Sprintf("Offset variable '%s' not found\n", ph.offsetvar)
-		panic(msg)
-	}
-	if ph.weightvar != "" && ph.weightvarpos == -1 {
-		msg := fmt.Sprintf("Weight variable '%s' not found\n", ph.weightvar)
-		panic(msg)
-	}
+func (a argsort) Len() int {
+	return len(a.s)
 }
 
-func (ph *PHReg) doScale() {
+func (a argsort) Swap(i, j int) {
+	a.s[i], a.s[j] = a.s[j], a.s[i]
+	a.inds[i], a.inds[j] = a.inds[j], a.inds[i]
+}
 
-	ph.xmean = make([]float64, len(ph.xpos))
-	ph.xscale = make([]float64, len(ph.xpos))
+func (a argsort) Less(i, j int) bool {
+	return a.s[i] < a.s[j]
+}
 
-	// Get the centers of the covariates
-	ph.data.Reset()
-	var n float64
-	for ph.data.Next() {
+type argsort struct {
+	s    []statmodel.Dtype
+	inds []int
+}
 
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
-		}
+func (ph *PHReg) sortByStratum() {
 
-		for j, k := range ph.xpos {
-			x := ph.data.GetPos(k).([]float64)
-			for i := range x {
-				if wgt == nil {
-					ph.xmean[j] += x[i]
-					n++
-				} else {
-					ph.xmean[j] += wgt[i] * x[i]
-					n += wgt[i]
-				}
-			}
-		}
-	}
+	time := ph.data[ph.timepos]
+	nobs := len(time)
 
-	floats.Scale(1/n, ph.xmean)
-
-	if ph.scaletype == statmodel.NoScale {
-		for k := range ph.xscale {
-			ph.xscale[k] = 1
-		}
+	if ph.stratumpos == -1 {
+		ph.stratumix = [][2]int{[2]int{0, nobs}}
 		return
 	}
 
-	// Calculate the L2 norms of the covariates.
-	ph.data.Reset()
-	for ph.data.Next() {
+	strata := ph.data[ph.stratumpos]
 
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
-		}
+	inds := make([]int, nobs)
+	for i := range inds {
+		inds[i] = i
+	}
+	a := argsort{s: strata, inds: inds}
+	sort.Sort(a)
 
-		for j, k := range ph.xpos {
-			x := ph.data.GetPos(k).([]float64)
-			for i := range x {
-				u := x[i] - ph.xmean[j]
-				if wgt != nil {
-					ph.xscale[j] += wgt[i] * u * u
-				} else {
-					ph.xscale[j] += u * u
-				}
-			}
+	tmp := make([]statmodel.Dtype, nobs)
+
+	re := func(pos int) {
+		if pos == -1 {
+			return
 		}
+		x := ph.data[pos]
+		for i, j := range inds {
+			tmp[i] = x[j]
+		}
+		x, tmp = tmp, x
+		ph.data[pos] = x
 	}
 
-	for j := range ph.xscale {
+	re(ph.timepos)
+	re(ph.statuspos)
+	re(ph.offsetpos)
+	re(ph.weightpos)
+	re(ph.entrypos)
 
-		switch ph.scaletype {
-		case statmodel.L2Norm:
-			ph.xscale[j] = math.Sqrt(ph.xscale[j])
-		case statmodel.Variance:
-			ph.xscale[j] = math.Sqrt(ph.xscale[j] / n)
-		default:
-			panic("Unknown scale type")
-		}
+	for _, k := range ph.xpos {
+		re(k)
+	}
 
-		if ph.xscale[j] == 0 {
-			names := ph.data.Names()
-			name := names[ph.xpos[j]]
-			msg := fmt.Sprintf("Variable %s has zero variance.\n", name)
-			panic(msg)
+	var i0 int
+	for i := 0; i <= len(strata); i++ {
+		if i == len(strata) || (i > 0 && strata[i-1] != strata[i]) {
+			ph.stratumix = append(ph.stratumix, [2]int{i0, i})
+			i0 = i
 		}
 	}
 }
 
 func (ph *PHReg) setupTimes() {
 
-	ph.data.Reset()
 	nskip := 0
 
-	// Each chunk is a stratum
-	for s := 0; ph.data.Next(); s++ {
+	time := ph.data[ph.timepos]
+	status := ph.data[ph.statuspos]
+	nobs := len(time)
 
-		// Track cases that are omitted since they are
-		// censored before the first event in their stratum.
-		ph.skip = append(ph.skip, make(map[int]bool))
+	// Track cases that are omitted since they are
+	// censored before the first event in their stratum.
+	ph.skip = make([]bool, nobs)
 
-		// Get the time data
-		tim := ph.data.GetPos(ph.timevarpos).([]float64)
+	// Get the sorted distinct times where events occur
+	for _, ix := range ph.stratumix {
 
-		// Get the event status data
-		status := ph.data.GetPos(ph.statusvarpos).([]float64)
-
-		// The sorted distinct times where events occur
 		var et []float64
-		for i, t := range tim {
-			if t < 0 {
+
+		for i := ix[0]; i < ix[1]; i++ {
+			if time[i] < 0 {
 				msg := fmt.Sprintf("PHReg: times cannot be negative.\n")
 				panic(msg)
 			}
 			if status[i] == 1 {
-				et = append(et, t)
+				et = append(et, float64(time[i]))
 			} else if status[i] != 0 {
-				msg := fmt.Sprintf("PHReg: status variable '%s' has values other than 0 and 1.\n", ph.statusvar)
+				msg := fmt.Sprintf("PHReg: status variable '%s' has values other than 0 and 1.\n", ph.varnames[ph.statuspos])
 				panic(msg)
 			}
 		}
+
 		if len(et) > 0 {
 			sort.Float64s(et)
+
+			// Deduplicate
 			j := 0
 			for i := 1; i < len(et); i++ {
 				if et[i] != et[j] {
@@ -396,17 +410,17 @@ func (ph *PHReg) setupTimes() {
 		}
 
 		// Risk set exit times
-		for i, t := range tim {
-			ii := sort.SearchFloat64s(et, t)
+		for i := ix[0]; i < ix[1]; i++ {
+			ii := sort.SearchFloat64s(et, float64(time[i]))
 			if ii < len(et) {
 				if ii == len(et) {
 					// Censored after last event, never exits
-				} else if et[ii] == t {
+				} else if et[ii] == float64(time[i]) {
 					// Event or censored at an event time
 					exit[ii] = append(exit[ii], i)
 				} else if ii == 0 {
 					// Censored before first event, never enters
-					ph.skip[s][i] = true
+					ph.skip[i] = true
 					nskip++
 				} else {
 					// Censored between event times
@@ -416,29 +430,30 @@ func (ph *PHReg) setupTimes() {
 		}
 
 		// Event times
-		for i, t := range tim {
-			if status[i] == 0 || ph.skip[s][i] {
+		for i := ix[0]; i < ix[1]; i++ {
+			if status[i] == 0 || ph.skip[i] {
 				continue
 			}
-			ii := sort.SearchFloat64s(et, t)
+			ii := sort.SearchFloat64s(et, float64(time[i]))
 			event[ii] = append(event[ii], i)
 		}
 
 		// Risk set entry times
-		if ph.entryvarpos == -1 {
+		if ph.entrypos == -1 {
 			// Everyone enters at time 0
-			for i := range tim {
-				if !ph.skip[s][i] {
+			for i := ix[0]; i < ix[1]; i++ {
+				if !ph.skip[i] {
 					enter[0] = append(enter[0], i)
 				}
 			}
 		} else {
-			ent := ph.data.GetPos(ph.entryvarpos).([]float64)
-			for i, t := range ent {
-				if ph.skip[s][i] {
+			entry := ph.data[ph.entrypos]
+			for i := ix[0]; i < ix[1]; i++ {
+				if ph.skip[i] {
 					continue
 				}
-				if t > tim[i] {
+				t := entry[i]
+				if t > time[i] {
 					msg := "PHReg: Entry times may not occur after event or censoring times.\n"
 					panic(msg)
 				}
@@ -447,7 +462,7 @@ func (ph *PHReg) setupTimes() {
 					panic(msg)
 
 				}
-				ii := sort.SearchFloat64s(et, t)
+				ii := sort.SearchFloat64s(et, float64(t))
 				if ii == len(et) {
 					// Enter after last event, never enters
 				} else {
@@ -463,39 +478,56 @@ func (ph *PHReg) setupTimes() {
 	}
 }
 
+func (ph *PHReg) putNslice(x []float64) {
+	ph.nslices = append(ph.nslices, x)
+}
+
+func (ph *PHReg) getNslice() []float64 {
+
+	if len(ph.nslices) == 0 {
+		return make([]float64, ph.NumObs())
+	}
+	q := len(ph.nslices) - 1
+	x := ph.nslices[q]
+	zero(x)
+	ph.nslices = ph.nslices[0:q]
+
+	return x
+}
+
 func (ph *PHReg) setupCovs() {
 
 	ph.sumx = ph.sumx[0:0]
-	ph.data.Reset()
-	for s := 0; ph.data.Next(); s++ {
+	status := ph.data[ph.statuspos]
 
-		status := ph.data.GetPos(ph.statusvarpos).([]float64)
+	var wgt []statmodel.Dtype
+	if ph.weightpos != -1 {
+		wgt = ph.data[ph.weightpos]
+	}
 
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
-		}
+	// Get the sum of covariates in each stratum,
+	// including only covariates for cases with the event
+	sumx := make([]float64, len(ph.xpos))
 
-		// Get the sum of covariates in each stratum,
-		// including only covariates for cases with the event
-		sumx := make([]float64, len(ph.xpos))
-		for k, j := range ph.xpos {
-			x := ph.data.GetPos(j).([]float64)
-			for i, v := range x {
-				if !ph.skip[s][i] && status[i] == 1 {
+	for _, ix := range ph.stratumix {
+		for j, k := range ph.xpos {
+			x := ph.data[k]
+			for i := ix[0]; i < ix[1]; i++ {
+				if !ph.skip[i] && status[i] == 1 {
 					if wgt == nil {
-						sumx[k] += (v - ph.xmean[k]) / ph.xscale[k]
+						sumx[j] += float64(x[i])
 					} else {
-						sumx[k] += wgt[i] * (v - ph.xmean[k]) / ph.xscale[k]
+						sumx[j] += float64(wgt[i] * x[i])
 					}
 				}
 			}
 		}
 		ph.sumx = append(ph.sumx, sumx)
+		sumx = make([]float64, len(ph.xpos))
 	}
 }
 
-// LogLike returns the log-likelihood at the given parameter value. The exact
+// LogLike returns the log-likelihood at the given parameter value. The 'exact'
 // parameter is ignored here.
 func (ph *PHReg) LogLike(param statmodel.Parameter, exact bool) float64 {
 
@@ -518,38 +550,49 @@ func (ph *PHReg) LogLike(param statmodel.Parameter, exact bool) float64 {
 // values, using the Breslow method to resolve ties.
 func (ph *PHReg) breslowLogLike(params []float64) float64 {
 
-	ph.data.Reset()
+	var wgt []statmodel.Dtype
+	if ph.weightpos != -1 {
+		wgt = ph.data[ph.weightpos]
+	}
+
+	var off []statmodel.Dtype
+	if ph.offsetpos != -1 {
+		off = ph.data[ph.offsetpos]
+	}
+
+	lp := ph.getNslice()
+	elp := ph.getNslice()
+
+	// Get the linear predictors
+	for j, k := range ph.xpos {
+		x := ph.data[k]
+		for i := range x {
+			lp[i] += float64(x[i]) * params[j]
+		}
+	}
+
+	// Add the offset, if present
+	if off != nil {
+		for i := range off {
+			lp[i] += float64(off[i])
+		}
+	}
 
 	ql := float64(0)
-	for s := 0; ph.data.Next(); s++ {
-
-		tim := ph.data.GetPos(ph.timevarpos).([]float64)
-		lp := make([]float64, len(tim))
-
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
-		}
-
-		// Get the linear predictors
-		for k, j := range ph.xpos {
-			x := ph.data.GetPos(j).([]float64)
-			for i, v := range x {
-				lp[i] += (v - ph.xmean[k]) * params[k] / ph.xscale[k]
-			}
-		}
-
-		// Add the offset, if present
-		if ph.offsetvarpos != -1 {
-			off := ph.data.GetPos(ph.offsetvarpos).([]float64)
-			floats.AddTo(lp, lp, off)
-		}
+	for s, ix := range ph.stratumix {
 
 		// We can add any constant here due to invariance in
 		// the partial likelihood.
-		mx := floats.Max(lp)
-		for i := range lp {
+		mx := floats.Max(lp[ix[0]:ix[1]])
+		for i := ix[0]; i < ix[1]; i++ {
 			lp[i] -= mx
+			elp[i] = math.Exp(lp[i])
+		}
+		if wgt != nil {
+			for i := ix[0]; i < ix[1]; i++ {
+				lp[i] *= float64(wgt[i])
+				elp[i] *= float64(wgt[i])
+			}
 		}
 
 		rlp := float64(0)
@@ -557,25 +600,17 @@ func (ph *PHReg) breslowLogLike(params []float64) float64 {
 
 			// Update for new entries
 			for _, i := range ph.enter[s][k] {
-				if wgt != nil {
-					rlp += wgt[i] * math.Exp(lp[i])
-				} else {
-					rlp += math.Exp(lp[i])
-				}
+				rlp += elp[i]
 			}
 
 			for _, i := range ph.event[s][k] {
-				if wgt != nil {
-					ql += wgt[i] * lp[i]
-				} else {
-					ql += lp[i]
-				}
+				ql += lp[i]
 			}
 
 			if wgt != nil {
 				var n float64
 				for _, i := range ph.event[s][k] {
-					n += wgt[i]
+					n += float64(wgt[i])
 				}
 				ql -= n * math.Log(rlp)
 			} else {
@@ -584,14 +619,13 @@ func (ph *PHReg) breslowLogLike(params []float64) float64 {
 
 			// Update for new exits
 			for _, i := range ph.exit[s][k] {
-				if wgt != nil {
-					rlp -= wgt[i] * math.Exp(lp[i])
-				} else {
-					rlp -= math.Exp(lp[i])
-				}
+				rlp -= elp[i]
 			}
 		}
 	}
+
+	ph.putNslice(lp)
+	ph.putNslice(elp)
 
 	return ql
 }
@@ -602,40 +636,33 @@ func (ph *PHReg) BaselineCumHaz(stratum int, params []float64) ([]float64, []flo
 
 	h0 := make([]float64, len(ph.event[stratum]))
 
-	ph.data.Reset()
-	var tim, lp []float64
-	for s := 0; ph.data.Next(); s++ {
+	ix := ph.stratumix[stratum]
 
-		// Use only the chosen stratum.
-		if s != stratum {
-			continue
-		}
+	lp := make([]float64, ix[1]-ix[0])
 
-		tim = ph.data.GetPos(ph.timevarpos).([]float64)
-		lp = make([]float64, len(tim))
-
-		// Get the linear predictors
-		for k, j := range ph.xpos {
-			x := ph.data.GetPos(j).([]float64)
-			for i, v := range x {
-				lp[i] += (v - ph.xmean[k]) * params[k] / ph.xscale[k]
-			}
+	// Get the linear predictors for this stratum
+	for j, k := range ph.xpos {
+		x := ph.data[k]
+		ii := 0
+		for i := ix[0]; i < ix[1]; i++ {
+			lp[ii] += float64(x[i]) * params[j]
+			ii++
 		}
 	}
 
 	elp := 0.0
-	for k := 0; k < len(ph.etimes[stratum]); k++ {
+	for k := range ph.etimes[stratum] {
 
 		// Update for new entries
 		for _, i := range ph.enter[stratum][k] {
-			elp += math.Exp(lp[i])
+			elp += math.Exp(lp[i-ix[0]])
 		}
 
 		h0[k] = float64(len(ph.event[stratum][k])) / elp
 
 		// Update for new exits
 		for _, i := range ph.exit[stratum][k] {
-			elp -= math.Exp(lp[i])
+			elp -= math.Exp(lp[i-ix[0]])
 		}
 	}
 
@@ -673,93 +700,88 @@ func (ph *PHReg) Score(params statmodel.Parameter, score []float64) {
 // Breslow approach to resolving ties.
 func (ph *PHReg) breslowScore(params, score []float64) {
 
-	ph.data.Reset()
-
 	zero(score)
 
-	for s := 0; ph.data.Next(); s++ {
+	var wgt []statmodel.Dtype
+	if ph.weightpos != -1 {
+		wgt = ph.data[ph.weightpos]
+	}
+
+	var off []statmodel.Dtype
+	if ph.offsetpos != -1 {
+		off = ph.data[ph.offsetpos]
+	}
+
+	lp := ph.getNslice()
+
+	// Get the linear predictors
+	for j, k := range ph.xpos {
+		x := ph.data[k]
+		for i := range x {
+			lp[i] += float64(x[i]) * params[j]
+		}
+	}
+
+	if off != nil {
+		for i := range off {
+			lp[i] += float64(off[i])
+		}
+	}
+
+	for s, ix := range ph.stratumix {
 
 		if ph.sumx[s] == nil {
 			continue
-		}
-
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
-		}
-
-		// Get the covariates to avoid repeated type assertions
-		var xvars [][]float64
-		for _, j := range ph.xpos {
-			xvars = append(xvars, ph.data.GetPos(j).([]float64))
 		}
 
 		for j := 0; j < len(ph.xpos); j++ {
 			score[j] += ph.sumx[s][j]
 		}
 
-		tim := ph.data.GetPos(ph.timevarpos).([]float64)
-		lp := make([]float64, len(tim))
-
-		// Get the linear predictors
-		for k := range ph.xpos {
-			x := xvars[k]
-			for i, v := range x {
-				lp[i] += (v - ph.xmean[k]) * params[k] / ph.xscale[k]
-			}
-		}
-
-		// Add the offset, if present
-		if ph.offsetvarpos != -1 {
-			off := ph.data.GetPos(ph.offsetvarpos).([]float64)
-			floats.AddTo(lp, lp, off)
-		}
-
 		// We can add any constant here due to invariance in
 		// the partial likelihood.
-		mx := floats.Max(lp)
-		for i := range lp {
-			lp[i] -= mx
+		mx := floats.Max(lp[ix[0]:ix[1]])
+		for i := ix[0]; i < ix[1]; i++ {
+			lp[i] = math.Exp(lp[i] - mx)
+		}
+		if wgt != nil {
+			for i := ix[0]; i < ix[1]; i++ {
+				lp[i] *= float64(wgt[i])
+			}
 		}
 
 		rlp := float64(0)
 		rlpv := make([]float64, len(ph.xpos))
-		for k := 0; k < len(ph.etimes[s]); k++ {
+		for q := range ph.etimes[s] {
 
 			// Update for new entries
-			for _, i := range ph.enter[s][k] {
-				f := math.Exp(lp[i])
-				if wgt != nil {
-					f *= wgt[i]
-				}
-				rlp += f
-				for j, x := range xvars {
-					rlpv[j] += f * (x[i] - ph.xmean[j]) / ph.xscale[j]
+			for _, i := range ph.enter[s][q] {
+				rlp += lp[i]
+				for j, k := range ph.xpos {
+					rlpv[j] += lp[i] * float64(ph.data[k][i])
 				}
 			}
 
-			d := float64(len(ph.event[s][k]))
+			d := float64(len(ph.event[s][q]))
 			if wgt != nil {
 				d = 0
-				for _, i := range ph.event[s][k] {
-					d += wgt[i]
+				for _, i := range ph.event[s][q] {
+					d += float64(wgt[i])
 				}
 			}
 			floats.AddScaledTo(score, score, -d/rlp, rlpv)
 
 			// Update for new exits
-			for _, i := range ph.exit[s][k] {
-				f := math.Exp(lp[i])
-				if wgt != nil {
-					f *= wgt[i]
-				}
-				rlp -= f
-				for j, x := range xvars {
-					rlpv[j] -= f * (x[i] - ph.xmean[j]) / ph.xscale[j]
+			for _, i := range ph.exit[s][q] {
+				rlp -= lp[i]
+				for j, k := range ph.xpos {
+					rlpv[j] -= lp[i] * float64(ph.data[k][i])
 				}
 			}
 		}
 	}
+
+	ph.putNslice(lp)
 }
 
 // Hessian computes the Hessian matrix for the model evaluated at the
@@ -784,60 +806,74 @@ func (ph *PHReg) Hessian(params statmodel.Parameter, ht statmodel.HessType, hess
 // hazards regression model at the given parameter values.
 func (ph *PHReg) breslowHess(params []float64, hess []float64) {
 
-	ph.data.Reset()
-
 	zero(hess)
 
-	for s := 0; ph.data.Next(); s++ {
+	var wgt []statmodel.Dtype
+	if ph.weightpos != -1 {
+		wgt = ph.data[ph.weightpos]
+	}
 
-		var wgt []float64
-		if ph.weightvarpos != -1 {
-			wgt = ph.data.GetPos(ph.weightvarpos).([]float64)
+	var off []statmodel.Dtype
+	if ph.offsetpos != -1 {
+		off = ph.data[ph.offsetpos]
+	}
+
+	time := ph.data[ph.timepos]
+	nobs := len(time)
+	lp := make([]float64, nobs)
+
+	// Get the linear predictors
+	for j, k := range ph.xpos {
+		x := ph.data[k]
+		for i := range x {
+			lp[i] += float64(x[i]) * params[j]
 		}
+	}
 
-		// Get the covariates to avoid repeated type assertions
-		var xvars [][]float64
-		for _, j := range ph.xpos {
-			xvars = append(xvars, ph.data.GetPos(j).([]float64))
+	// Add the offset, if present
+	if off != nil {
+		for i := range off {
+			lp[i] += float64(off[i])
 		}
+	}
 
-		tim := ph.data.GetPos(ph.timevarpos).([]float64)
-		lp := make([]float64, len(tim))
+	p := len(ph.xpos)
+	d1s := make([]float64, p)
+	d2s := make([]float64, p*p)
 
-		// Get the linear predictors
-		for k := range ph.xpos {
-			x := xvars[k]
-			for i, v := range x {
-				lp[i] += v * params[k]
+	for s, ix := range ph.stratumix {
+
+		// We can add any constant here due to invariance in
+		// the partial likelihood.
+		mx := floats.Max(lp[ix[0]:ix[1]])
+		for i := ix[0]; i < ix[1]; i++ {
+			lp[i] = math.Exp(lp[i] - mx)
+		}
+		if wgt != nil {
+			for i := ix[0]; i < ix[1]; i++ {
+				lp[i] *= float64(wgt[i])
 			}
 		}
 
-		// Add the offset, if present
-		if ph.offsetvarpos != -1 {
-			off := ph.data.GetPos(ph.offsetvarpos).([]float64)
-			floats.AddTo(lp, lp, off)
-		}
-
 		rlp := float64(0)
-		p := len(xvars)
-		d1s := make([]float64, p)
-		d2s := make([]float64, p*p)
+
+		zero(d1s)
+		zero(d2s)
+
 		for k := 0; k < len(ph.etimes[s]); k++ {
 
 			// Update for new entries
 			for _, i := range ph.enter[s][k] {
 
-				f := math.Exp(lp[i])
-				if wgt != nil {
-					f *= wgt[i]
-				}
-				rlp += f
+				rlp += lp[i]
 
-				for j1, x1 := range xvars {
-					d1s[j1] += f * x1[i]
+				for j1, k1 := range ph.xpos {
+					x1 := ph.data[k1]
+					d1s[j1] += lp[i] * float64(x1[i])
 					for j2 := 0; j2 <= j1; j2++ {
-						x2 := xvars[j2]
-						u := f * x1[i] * x2[i]
+						k2 := ph.xpos[j2]
+						x2 := ph.data[k2]
+						u := lp[i] * float64(x1[i]*x2[i])
 						d2s[j1*p+j2] += u
 						if j2 != j1 {
 							d2s[j2*p+j1] += u
@@ -850,7 +886,7 @@ func (ph *PHReg) breslowHess(params []float64, hess []float64) {
 			if wgt != nil {
 				d = 0
 				for _, i := range ph.event[s][k] {
-					d += wgt[i]
+					d += float64(wgt[i])
 				}
 			}
 
@@ -866,17 +902,14 @@ func (ph *PHReg) breslowHess(params []float64, hess []float64) {
 			// Update for new exits
 			for _, i := range ph.exit[s][k] {
 
-				f := math.Exp(lp[i])
-				if wgt != nil {
-					f *= wgt[i]
-				}
-
-				rlp -= f
-				for j1, x1 := range xvars {
-					d1s[j1] -= f * x1[i]
+				rlp -= lp[i]
+				for j1, k1 := range ph.xpos {
+					x1 := ph.data[k1]
+					d1s[j1] -= lp[i] * float64(x1[i])
 					for j2 := 0; j2 <= j1; j2++ {
-						x2 := xvars[j2]
-						u := f * x1[i] * x2[i]
+						k2 := ph.xpos[j2]
+						x2 := ph.data[k2]
+						u := lp[i] * float64(x1[i]*x2[i])
 						d2s[j1*p+j2] -= u
 						if j2 != j1 {
 							d2s[j2*p+j1] -= u
@@ -899,72 +932,78 @@ type PHResults struct {
 	statmodel.BaseResults
 }
 
-// DataSet returns the underlying data set for the regression model.
-func (ph *PHReg) DataSet() dstream.Dstream {
-	return ph.data
-}
-
 // failMessage prints information that can help diagnose optimization failures.
 func (ph *PHReg) failMessage(optrslt *optimize.Result) {
 
-	xnames := ph.data.Names()
-
 	os.Stderr.WriteString("Current point and gradient:\n")
 	for j, x := range optrslt.X {
-		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", x, optrslt.Gradient[j], xnames[ph.xpos[j]]))
+		na := ph.varnames[ph.xpos[j]]
+		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", x, optrslt.Gradient[j], na))
 	}
 
-	// Get the covariates to avoid repeated type assertions
-	ph.data.Reset()
-	xvars := make([][]float64, len(ph.xpos))
+	time := ph.data[ph.timepos]
+	status := ph.data[ph.statuspos]
+
+	var entry []statmodel.Dtype
+	if ph.entrypos != -1 {
+		entry = ph.data[ph.entrypos]
+	}
+
 	var nEvent []float64
 	var mTime []float64
 	var stSize []float64
 	var mEntry []float64
-	for ph.data.Next() {
-		for k, j := range ph.xpos {
-			xvars[k] = append(xvars[k], ph.data.GetPos(j).([]float64)...)
-		}
 
-		// Count the events per stratum
-		status := ph.data.GetPos(ph.statusvarpos).([]float64)
-		e := floats.Sum(status)
-		nEvent = append(nEvent, e)
-
-		// Get the mean event time per stratum
-		time := ph.data.GetPos(ph.timevarpos).([]float64)
-		e = floats.Sum(time) / float64(len(time))
-		mTime = append(mTime, e)
-
-		// Track the stratum sizes
-		stSize = append(stSize, float64(len(time)))
-
-		// Get the mean entry time per stratum if available.
-		if ph.entryvarpos != -1 {
-			entry := ph.data.GetPos(ph.entryvarpos).([]float64)
-			e = floats.Sum(entry) / float64(len(entry))
-			mEntry = append(mEntry, e)
-		}
-	}
-
-	// Get the mean and standard deviation of covariates.
 	mn := make([]float64, len(ph.xpos))
 	sd := make([]float64, len(ph.xpos))
-	for j, x := range xvars {
-		mn[j] = floats.Sum(x) / float64(len(x))
-	}
-	for j, x := range xvars {
-		for _, y := range x {
-			u := y - mn[j]
-			sd[j] += u * u
+
+	for _, ix := range ph.stratumix {
+
+		// Count the events per stratum
+		var e, em float64
+		for i := ix[0]; i < ix[1]; i++ {
+			e += float64(status[i])
+			em += float64(time[i])
 		}
-		sd[j] /= float64(len(x))
-		sd[j] = math.Sqrt(sd[j])
+		nEvent = append(nEvent, e)
+		mTime = append(mTime, float64(ix[1]-ix[0]))
+
+		// Track the stratum sizes
+		stSize = append(stSize, float64(ix[1]-ix[0]))
+
+		// Get the mean entry time per stratum if available.
+		if entry != nil {
+			e := 0.0
+			for i := ix[0]; i < ix[1]; i++ {
+				e += float64(entry[i])
+			}
+			mEntry = append(mEntry, e/float64(ix[1]-ix[0]))
+		}
+
+		// Get the mean and standard deviation of covariates.
+		for j, k := range ph.xpos {
+			x := ph.data[k]
+			for i := ix[0]; i < ix[1]; i++ {
+				mn[j] += float64(x[i])
+			}
+			mn[j] /= float64(ix[1] - ix[0])
+		}
+
+		for j, k := range ph.xpos {
+			x := ph.data[k]
+			for i := ix[0]; i < ix[1]; i++ {
+				u := float64(x[i]) - mn[j]
+				sd[j] += u * u
+			}
+			sd[j] /= float64(ix[1] - ix[0])
+			sd[j] = math.Sqrt(sd[j])
+		}
 	}
 
 	os.Stderr.WriteString("\nCovariate means and standard deviations:\n")
 	for j, m := range mn {
-		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", m, sd[j], xnames[ph.xpos[j]]))
+		na := ph.varnames[ph.xpos[j]]
+		os.Stderr.WriteString(fmt.Sprintf("%16.8f %16.8f %s\n", m, sd[j], na))
 	}
 
 	os.Stderr.WriteString("\nStratum    Size       Events   Event_rate    Mean_time")
@@ -994,11 +1033,6 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 
 	if ph.l1wgt != nil {
 		return ph.fitRegularized(), nil
-	}
-
-	if !ph.done {
-		msg := fmt.Sprintf("PHReg: must call Done before calling Fit")
-		panic(msg)
 	}
 
 	nvar := len(ph.xpos)
@@ -1031,9 +1065,8 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 	}
 
 	var xna []string
-	na := ph.data.Names()
 	for _, k := range ph.xpos {
-		xna = append(xna, na[k])
+		xna = append(xna, ph.varnames[k])
 	}
 
 	optrslt, err := optimize.Minimize(p, ph.start, ph.settings, ph.method)
@@ -1054,9 +1087,7 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 	}
 
 	param := make([]float64, len(optrslt.X))
-	for j := range optrslt.X {
-		param[j] = optrslt.X[j] / ph.xscale[j]
-	}
+	copy(param, optrslt.X)
 
 	ll := -optrslt.F
 	vcov, _ := statmodel.GetVcov(ph, &PHParameter{param})
@@ -1068,70 +1099,111 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 	return results, nil
 }
 
-// GetFocusable gets a focusable version of the model, which can be
-// projected onto the coordinate axes for coordinate optimization.
-// It is exposed for use in elastic net optimization, but unlikely
-// to be useful to ordinary users.
-func (ph *PHReg) GetFocusable() statmodel.ModelFocuser {
+// Focus returns a new PHReg instance with a single variable, which is variable j in the
+// original model.  The effects of the remaining covariates are captured
+// through the offset.
+func (model *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.RegFitter {
 
-	other := []string{ph.timevar, ph.statusvar}
+	fmodel := *model
 
-	// Set up the focusable data.
-	fdat := statmodel.NewFocusData(ph.data, ph.xpos, ph.xscale).Other(other).Done()
+	fmodel.varnames = []string{
+		model.varnames[model.timepos],
+		model.varnames[model.statuspos],
+		model.varnames[model.xpos[pos]],
+	}
+	fmodel.data = [][]statmodel.Dtype{
+		model.data[model.timepos],
+		model.data[model.statuspos],
+		model.data[model.xpos[pos]],
+	}
+	fmodel.timepos = 0
+	fmodel.statuspos = 1
+	fmodel.xpos = []int{2}
+	fmodel.start = nil // TODO
+	fmodel.settings = nil
+	fmodel.method = nil
+	fmodel.log = model.log
 
-	newph := NewPHReg(fdat, ph.timevar, ph.statusvar).Offset("off")
-
-	if ph.l1wgt != nil {
-		newph = newph.L1Weight([]float64{0})
+	add := func(pos int) int {
+		if pos == -1 {
+			return -1
+		}
+		fmodel.varnames = append(fmodel.varnames, model.varnames[pos])
+		fmodel.data = append(fmodel.data, model.data[pos])
+		return len(fmodel.data) - 1
 	}
 
-	if ph.l2wgt != nil {
-		newph = newph.L2Weight([]float64{0})
+	fmodel.weightpos = add(model.weightpos)
+	fmodel.entrypos = add(model.entrypos)
+	fmodel.stratumpos = add(model.stratumpos)
+
+	// Allocate a new slice for the offset
+	nobs := model.NumObs()
+	if cap(offset) < nobs {
+		offset = make([]float64, nobs)
+	} else {
+		offset = offset[0:nobs]
+		zero(offset)
+	}
+	fmodel.varnames = append(fmodel.varnames, "__offset")
+	fmodel.data = append(fmodel.data, make([]statmodel.Dtype, model.NumObs()))
+	fmodel.offsetpos = len(fmodel.data) - 1
+
+	// Fill in the offset
+	off := fmodel.data[fmodel.offsetpos]
+	zerodtype(off)
+	for j, k := range model.xpos {
+		if j != pos {
+			for i := range off {
+				off[i] += statmodel.Dtype(coeff[j] * float64(model.data[k][i]))
+			}
+		}
 	}
 
-	if ph.entryvar != "" {
-		newph = newph.Entry(ph.entryvar)
+	// Add the original offset if present
+	if model.offsetpos != -1 {
+		offsetOrig := model.data[model.offsetpos]
+		for i := range offsetOrig {
+			off[i] += offsetOrig[i]
+		}
 	}
 
-	newph = newph.Done()
-
-	return newph
-}
-
-// Focus sets the data to contain only one predictor (with the given
-// index).  The effects of the remaining covariates are captured
-// throughthe offset.  The is exposed for use in elastic net fitting
-// but is unlikely to be useful for ordinary users.  Can only be
-// called on a focusable version of the model value.
-func (ph *PHReg) Focus(j int, coeff []float64, l2wgt float64) {
-	ph.data.(*statmodel.FocusData).Focus(j, coeff)
-
-	if l2wgt > 0 {
-		ph.l2wgt[0] = l2wgt
+	if model.l2wgtMap != nil {
+		fmodel.l2wgtMap = make(map[string]float64)
+		vn := model.varnames[model.xpos[pos]]
+		fmodel.l2wgtMap[vn] = model.l2wgtMap[vn]
+		fmodel.l2wgt = []float64{model.l2wgtMap[vn]}
+	} else {
+		fmodel.l2wgt = nil
 	}
 
-	// Need to rerun these after adjusting covariates
-	ph.doScale()
-	ph.setupCovs()
+	fmodel.l1wgtMap = nil
+	fmodel.l1wgt = nil
+
+	return &fmodel
 }
 
 func (rslt *PHResults) summaryStats() (int, int, int, int) {
 
 	ph := rslt.Model().(*PHReg)
-	data := ph.DataSet()
+	data := ph.Dataset()
+
+	status := data[ph.statuspos]
+
+	var entry []statmodel.Dtype
+	if ph.entrypos != -1 {
+		entry = data[ph.entrypos]
+	}
 
 	var n, e, pe, ns int
-	data.Reset()
-	for data.Next() {
-		st := data.GetPos(ph.statusvarpos).([]float64)
-		n += len(st)
-		for _, x := range st {
-			e += int(x)
+	for _, ix := range ph.stratumix {
+		n += ix[1] - ix[0]
+		for i := ix[0]; i < ix[1]; i++ {
+			e += int(status[i])
 		}
-		if ph.entryvarpos != -1 {
-			et := data.GetPos(ph.entryvarpos).([]float64)
-			for _, x := range et {
-				if x > 0 {
+		if entry != nil {
+			for i := ix[0]; i < ix[1]; i++ {
+				if entry[i] > 0 {
 					pe++
 				}
 			}
@@ -1151,20 +1223,13 @@ func (ph *PHReg) fitRegularized() *PHResults {
 		coeff: make([]float64, len(ph.xpos)),
 	}
 
-	par := statmodel.FitL1Reg(ph, start, ph.l1wgt, ph.l2wgt, ph.xscale, true)
+	par := statmodel.FitL1Reg(ph, start, ph.l1wgt, ph.l2wgt, true)
 	coeff := par.GetCoeff()
-
-	// Since coeff is transformed back to the original scale, we
-	// need to stop normalizing now.
-	for i := range ph.xscale {
-		ph.xscale[i] = 1
-	}
 
 	// Covariate names
 	var xna []string
-	na := ph.data.Names()
 	for _, j := range ph.xpos {
-		xna = append(xna, na[j])
+		xna = append(xna, ph.varnames[j])
 	}
 
 	results := &PHResults{

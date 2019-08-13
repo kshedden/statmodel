@@ -189,6 +189,7 @@ func expitFunc(x []float64, y []float64) {
 }
 
 func idFunc(x []float64, y []float64) {
+	// Assumes lengths match
 	copy(y, x)
 }
 

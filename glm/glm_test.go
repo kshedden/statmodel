@@ -5,11 +5,11 @@ This set of tests uses very small datasets.  The results for comparison are take
 package glm
 
 import (
-	"fmt"
+	"log"
 	"math"
+	"os"
 	"testing"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/statmodel"
 	"gonum.org/v1/gonum/floats"
 )
@@ -18,103 +18,110 @@ func scalarClose(x, y, eps float64) bool {
 	return math.Abs(x-y) <= eps
 }
 
-func data1(wgt bool) dstream.Dstream {
-
-	y := []float64{0, 1, 3, 2, 1, 1, 0}
-	x1 := []float64{1, 1, 1, 1, 1, 1, 1}
-	x2 := []float64{4, 1, -1, 3, 5, -5, 3}
-	w := []float64{1, 2, 2, 3, 1, 3, 2}
-	da := []interface{}{y, x1, x2}
-	na := []string{"y", "x1", "x2"}
-
-	if wgt {
-		da = append(da, w)
-		na = append(na, "w")
-	}
-
-	return dstream.NewFromFlat(da, na)
+type dataset struct {
+	data     [][]statmodel.Dtype
+	varnames []string
+	xnames   []string
 }
 
-func data2(wgt bool) dstream.Dstream {
+func data1(wgt bool) dataset {
 
-	y := []float64{0, 0, 1, 0, 1, 0, 0}
-	x1 := []float64{1, 1, 1, 1, 1, 1, 1}
-	x2 := []float64{4, 1, -1, 3, 5, -5, 3}
-	x3 := []float64{1, -1, 1, 1, 2, 5, -1}
-	w := []float64{2, 1, 3, 3, 4, 2, 3}
-
-	da := []interface{}{y, x1, x2, x3}
-	na := []string{"y", "x1", "x2", "x3"}
+	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
+	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
+	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
+	data := [][]statmodel.Dtype{y, x1, x2}
+	varnames := []string{"y", "x1", "x2"}
+	xnames := []string{"x1", "x2"}
 
 	if wgt {
-		da = append(da, w)
-		na = append(na, "w")
+		w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
+		data = append(data, w)
+		varnames = append(varnames, "w")
 	}
 
-	return dstream.NewFromFlat(da, na)
+	return dataset{data: data, varnames: varnames, xnames: xnames}
 }
 
-func data3(wgt bool) dstream.Dstream {
+func data2(wgt bool) dataset {
 
-	y := []float64{1, 1, 1, 0, 0, 0, 0}
-	x1 := []float64{1, 1, 1, 1, 1, 1, 1}
-	x2 := []float64{0, 1, 0, 0, -1, 0, 1}
-	w := []float64{3, 3, 2, 3, 1, 3, 2}
-
-	da := []interface{}{y, x1, x2}
-	na := []string{"y", "x1", "x2"}
+	y := []statmodel.Dtype{0, 0, 1, 0, 1, 0, 0}
+	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
+	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
+	x3 := []statmodel.Dtype{1, -1, 1, 1, 2, 5, -1}
+	data := [][]statmodel.Dtype{y, x1, x2, x3}
+	varnames := []string{"y", "x1", "x2", "x3"}
+	xnames := []string{"x1", "x2", "x3"}
 
 	if wgt {
-		da = append(da, w)
-		na = append(na, "w")
+		w := []statmodel.Dtype{2, 1, 3, 3, 4, 2, 3}
+		data = append(data, w)
+		varnames = append(varnames, "w")
 	}
 
-	return dstream.NewFromFlat(da, na)
+	return dataset{data: data, varnames: varnames, xnames: xnames}
 }
 
-func data4(wgt bool) dstream.Dstream {
+func data3(wgt bool) dataset {
 
-	y := []float64{3, 1, 5, 4, 2, 3, 6}
-	x1 := []float64{1, 1, 1, 1, 1, 1, 1}
-	x2 := []float64{4, 1, -1, 3, 5, -5, 3}
-	x3 := []float64{1, -1, 1, 1, 2, 5, -1}
-	w := []float64{3, 3, 2, 3, 1, 3, 2}
-
-	da := []interface{}{y, x1, x2, x3}
-	na := []string{"y", "x1", "x2", "x3"}
+	y := []statmodel.Dtype{1, 1, 1, 0, 0, 0, 0}
+	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
+	x2 := []statmodel.Dtype{0, 1, 0, 0, -1, 0, 1}
+	data := [][]statmodel.Dtype{y, x1, x2}
+	varnames := []string{"y", "x1", "x2"}
+	xnames := []string{"x1", "x2"}
 
 	if wgt {
-		da = append(da, w)
-		na = append(na, "w")
+		w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
+		data = append(data, w)
+		varnames = append(varnames, "w")
 	}
 
-	return dstream.NewFromFlat(da, na)
+	return dataset{data: data, varnames: varnames, xnames: xnames}
 }
 
-func data5(wgt bool) dstream.Dstream {
+func data4(wgt bool) dataset {
 
-	y := []float64{0, 1, 3, 2, 1, 1, 0}
-	x1 := []float64{1, 1, 1, 1, 1, 1, 1}
-	x2 := []float64{4, 1, -1, 3, 5, -5, 3}
-	off := []float64{0, 0, 1, 1, 0, 0, 0}
-	w := []float64{1, 2, 2, 3, 1, 3, 2}
-
-	da := []interface{}{y, x1, x2, off}
-	na := []string{"y", "x1", "x2", "off"}
+	y := []statmodel.Dtype{3, 1, 5, 4, 2, 3, 6}
+	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
+	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
+	x3 := []statmodel.Dtype{1, -1, 1, 1, 2, 5, -1}
+	data := [][]statmodel.Dtype{y, x1, x2, x3}
+	varnames := []string{"y", "x1", "x2", "x3"}
+	xnames := []string{"x1", "x2", "x3"}
 
 	if wgt {
-		da = append(da, w)
-		na = append(na, "w")
+		w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
+		data = append(data, w)
+		varnames = append(varnames, "w")
 	}
 
-	return dstream.NewFromFlat(da, na)
+	return dataset{data: data, varnames: varnames, xnames: xnames}
+}
+
+func data5(wgt bool) dataset {
+
+	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
+	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
+	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
+	off := []statmodel.Dtype{0, 0, 1, 1, 0, 0, 0}
+	data := [][]statmodel.Dtype{y, x1, x2, off}
+	varnames := []string{"y", "x1", "x2", "off"}
+	xnames := []string{"x1", "x2"}
+
+	if wgt {
+		w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
+		data = append(data, w)
+		varnames = append(varnames, "w")
+	}
+
+	return dataset{data: data, varnames: varnames, xnames: xnames}
 }
 
 // A test problem
 type testprob struct {
 	title      string
 	family     *Family
-	data       dstream.Dstream
+	data       dataset
 	weight     bool
 	offset     bool
 	start      []float64
@@ -126,7 +133,6 @@ type testprob struct {
 	l2wgt      map[string]float64
 	l1wgt      map[string]float64
 	fitmethods []string
-	scaletype  []statmodel.ScaleType
 	paramstol  float64
 	stderrtol  float64
 	vcovtol    float64
@@ -136,7 +142,7 @@ type testprob struct {
 
 var glmTests []testprob = []testprob{
 	{
-		title:      "Gaussian 1",
+		title:      "Gaussian 1 weighted OLS",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data1(true),
@@ -147,10 +153,9 @@ var glmTests []testprob = []testprob{
 		ll:         -19.14926021670413,
 		scale:      1.0414236578435769,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:  "Gaussian 2",
+		title:  "Gaussian 2 weighted OLS",
 		family: NewFamily(GaussianFamily),
 		start:  nil,
 		data:   data2(true),
@@ -163,10 +168,9 @@ var glmTests []testprob = []testprob{
 		ll:         -11.876495505764467,
 		scale:      0.25882586275287583,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Gaussian 3",
+		title:      "Gaussian 3 weighted OLS",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data3(true),
@@ -177,10 +181,9 @@ var glmTests []testprob = []testprob{
 		ll:         -11.862285137866323,
 		scale:      0.26589147286821707,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Poisson 1",
+		title:      "Poisson 1 weighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data1(true),
@@ -191,10 +194,9 @@ var glmTests []testprob = []testprob{
 		ll:         -19.00280708909699,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:  "Poisson 2",
+		title:  "Poisson 2 weighted MLE",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
 		data:   data2(true),
@@ -207,10 +209,9 @@ var glmTests []testprob = []testprob{
 		ll:         -13.098177137990557,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Poisson 3",
+		title:      "Poisson 3 weighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data3(true),
@@ -221,10 +222,9 @@ var glmTests []testprob = []testprob{
 		ll:         -13.768882387425702,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:  "Binomial 1",
+		title:  "Binomial 1 weighted MLE",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
 		data:   data2(true),
@@ -236,10 +236,9 @@ var glmTests []testprob = []testprob{
 		ll:         -11.17418536789415,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Binomial 2",
+		title:      "Binomial 2 weighted MLE",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data3(true),
@@ -250,10 +249,9 @@ var glmTests []testprob = []testprob{
 		ll:         -11.245509472906111,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:  "Binomial 3",
+		title:  "Binomial 3 unweighted MLE",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
 		data:   data2(false),
@@ -265,10 +263,9 @@ var glmTests []testprob = []testprob{
 		ll:         -3.9607532681097091,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Binomial 4",
+		title:      "Binomial 4 unweighted MLE",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data3(false),
@@ -278,10 +275,9 @@ var glmTests []testprob = []testprob{
 		ll:         -4.53963553741,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Poisson 4",
+		title:      "Poisson 4 unweighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data1(false),
@@ -291,10 +287,9 @@ var glmTests []testprob = []testprob{
 		ll:         -9.1041354864426385,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:  "Poisson 5",
+		title:  "Poisson 5 unweighted MLE",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
 		data:   data2(false),
@@ -306,10 +301,9 @@ var glmTests []testprob = []testprob{
 		ll:         -4.3466061504389559,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Poisson 6",
+		title:      "Poisson 6 unweighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
 		data:       data3(false),
@@ -319,10 +313,9 @@ var glmTests []testprob = []testprob{
 		ll:         -5.4060591253,
 		scale:      1,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
-		title:      "Gaussian 4",
+		title:      "Gaussian 4 unweighted MLE",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
 		data:       data1(false),
@@ -332,7 +325,6 @@ var glmTests []testprob = []testprob{
 		ll:         -9.621454,
 		scale:      1.21752988048,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
 		title:  "Gaussian 5",
@@ -347,7 +339,6 @@ var glmTests []testprob = []testprob{
 		ll:         -4.596270,
 		scale:      0.334176605228,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
 		title:      "Gaussian 6",
@@ -360,7 +351,6 @@ var glmTests []testprob = []testprob{
 		ll:         -4.944550,
 		scale:      0.32,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
 		title:  "Inverse Gaussian 1",
@@ -376,7 +366,6 @@ var glmTests []testprob = []testprob{
 		ll:         -33.701849656107399,
 		scale:      0.074887605672913735,
 		fitmethods: []string{"IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm},
 	},
 	{
 		title:  "Gamma 1",
@@ -392,7 +381,6 @@ var glmTests []testprob = []testprob{
 		ll:         -31.687753839200358,
 		scale:      0.25143442760931506,
 		fitmethods: []string{"IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
 		title:  "QuasiPoisson 1",
@@ -408,7 +396,6 @@ var glmTests []testprob = []testprob{
 		ll:         -13.098177137990557,
 		scale:      0.7780190501841399,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
 		title:  "Negative binomial 1",
@@ -424,7 +411,6 @@ var glmTests []testprob = []testprob{
 		ll:         -39.875709730019153,
 		scale:      0.19468567690459238,
 		fitmethods: []string{"IRLS"}, // Gradient does not converge
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
 		title:  "Negative binomial 2",
@@ -440,7 +426,6 @@ var glmTests []testprob = []testprob{
 		ll:         -42.669972197288509,
 		scale:      0.14064363313622641,
 		fitmethods: []string{"IRLS"}, // Gradient does not converge
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
 		title:      "Poisson 7",
@@ -455,7 +440,6 @@ var glmTests []testprob = []testprob{
 		ll:         -15.259195632772048,
 		scale:      1.0,
 		fitmethods: []string{"Gradient", "IRLS"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale, statmodel.L2Norm, statmodel.Variance},
 	},
 	{
 		title:      "Poisson 8",
@@ -467,7 +451,6 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l2wgt:      map[string]float64{"x1": 0.1, "x2": 0.1},
 		fitmethods: []string{"Gradient"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
 		title:      "Poisson 9",
@@ -479,7 +462,6 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0.2, "x3": 0.2},
 		fitmethods: []string{"Gradient"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
 		title:      "Binomial 6",
@@ -491,7 +473,6 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0.2, "x3": 0.2},
 		fitmethods: []string{"Gradient"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
 		title:      "Binomial 7",
@@ -503,10 +484,9 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l2wgt:      map[string]float64{"x1": 0.2, "x2": 0, "x3": 0.1},
 		fitmethods: []string{"Gradient"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
-		title:      "Binomial 8",
+		title:      "Binomial 8 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -515,10 +495,9 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l1wgt:      map[string]float64{"x1": 0.1, "x2": 0.1, "x3": 0.1},
 		fitmethods: []string{"Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
-		title:      "Binomial 9",
+		title:      "Binomial 9 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -527,22 +506,20 @@ var glmTests []testprob = []testprob{
 		scale:      1.0,
 		l1wgt:      map[string]float64{"x1": 0.05, "x2": 0.05, "x3": 0.05},
 		fitmethods: []string{"Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
-		title:      "Binomial 10",
+		title:      "Binomial 10 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
 		weight:     false,
-		params:     []float64{-0.89149010, 0.0312166489, 0.0485293176},
+		params:     []float64{-1.433479, 0.152795, 0.268036},
 		scale:      1.0,
 		l1wgt:      map[string]float64{"x1": 0.01, "x2": 0.01, "x3": 0.01},
 		fitmethods: []string{"Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.L2Norm},
 	},
 	{
-		title:      "Binomial 11",
+		title:      "Binomial 11 L1 and L2 regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
 		data:       data2(false),
@@ -552,7 +529,6 @@ var glmTests []testprob = []testprob{
 		l1wgt:      map[string]float64{"x1": 0.02, "x2": 0.02, "x3": 0.02},
 		l2wgt:      map[string]float64{"x1": 0.02, "x2": 0.02, "x3": 0.02},
 		fitmethods: []string{"Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
 		title:      "Tweedie 1",
@@ -568,7 +544,6 @@ var glmTests []testprob = []testprob{
 		l1wgt:      nil,
 		l2wgt:      nil,
 		fitmethods: []string{"IRLS", "Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 	{
 		title:  "Tweedie 2",
@@ -588,114 +563,132 @@ var glmTests []testprob = []testprob{
 		l1wgt:      nil,
 		l2wgt:      nil,
 		fitmethods: []string{"IRLS", "Coordinate"},
-		scaletype:  []statmodel.ScaleType{statmodel.NoScale},
 	},
 }
 
 func TestFit(t *testing.T) {
 
+	lf, err := os.Create("glm_test.log")
+	if err != nil {
+		panic(err)
+	}
+	defer lf.Close()
+	tlog := log.New(lf, "", log.Lshortfile)
+
 	for _, ds := range glmTests {
-		for _, scaletype := range ds.scaletype {
-			for _, fmeth := range ds.fitmethods {
+		for _, fmeth := range ds.fitmethods {
 
-				glm := NewGLM(ds.data, "y")
+			config := DefaultConfig()
+			config.Family = ds.family
+			config.FitMethod = fmeth
 
-				if ds.weight {
-					glm = glm.Weight("w")
-				}
-
-				if ds.offset {
-					glm = glm.Offset("off")
-				}
-
-				glm = glm.Family(ds.family).FitMethod(fmeth)
-
-				if ds.l1wgt != nil {
-					glm = glm.L1Penalty(ds.l1wgt)
-				}
-
-				if ds.l2wgt != nil {
-					glm = glm.L2Penalty(ds.l2wgt)
-				}
-
-				glm = glm.CovariateScale(scaletype)
-
-				if len(ds.start) > 0 {
-					glm = glm.Start(ds.start)
-				}
-
-				glm = glm.Done()
-
-				result := glm.Fit()
-
-				if ds.paramstol == 0 {
-					ds.paramstol = 1e-5
-				}
-
-				if ds.stderrtol == 0 {
-					ds.stderrtol = 1e-5
-				}
-
-				if ds.vcovtol == 0 {
-					ds.vcovtol = 1e-5
-				}
-
-				if ds.logliketol == 0 {
-					ds.logliketol = 1e-5
-				}
-
-				if ds.scaletol == 0 {
-					ds.scaletol = 1e-5
-				}
-
-				if !floats.EqualApprox(result.Params(), ds.params, ds.paramstol) {
-					fmt.Printf("%s\n", ds.title)
-					fmt.Printf("Parameter estimates disagree:\n")
-					fmt.Printf("Expected: %v\n", ds.params)
-					fmt.Printf("Found:    %v\n", result.Params())
-					t.Fail()
-				}
-
-				if math.Abs(result.Scale()-ds.scale) > ds.scaletol {
-					fmt.Printf("%s\n", ds.title)
-					fmt.Printf("Scale estimates disagree:\n")
-					fmt.Printf("Expected: %v\n", ds.scale)
-					fmt.Printf("Found:    %v\n", result.Scale())
-					t.Fail()
-				}
-
-				// No stderr or vcov with regularization
-				if ds.l2wgt != nil || ds.l1wgt != nil {
-					continue
-				}
-
-				if !scalarClose(result.LogLike(), ds.ll, ds.logliketol) {
-					fmt.Printf("%s\n", ds.title)
-					fmt.Printf("Loglikelihood values disagree:\n")
-					fmt.Printf("Expected: %v\n", ds.ll)
-					fmt.Printf("Found:    %v\n", result.LogLike())
-					t.Fail()
-				}
-
-				if !floats.EqualApprox(result.StdErr(), ds.stderr, ds.stderrtol) {
-					fmt.Printf("%s\n", ds.title)
-					fmt.Printf("Standard errors disagree\n")
-					fmt.Printf("Expected: %v\n", ds.stderr)
-					fmt.Printf("Found:    %v\n", result.StdErr())
-					t.Fail()
-				}
-
-				if !floats.EqualApprox(result.VCov(), ds.vcov, ds.vcovtol) {
-					fmt.Printf("%s\n", ds.title)
-					fmt.Printf("vcov values disagree\n")
-					fmt.Printf("Expected: %v\n", ds.vcov)
-					fmt.Printf("Found:    %v\n", result.VCov())
-					t.Fail()
-				}
-
-				// Smoke test
-				_ = result.Summary()
+			if ds.weight {
+				config.WeightVar = "w"
 			}
+
+			if ds.offset {
+				config.OffsetVar = "off"
+			}
+
+			if ds.l1wgt != nil {
+				config.L1Penalty = ds.l1wgt
+			}
+
+			if ds.l2wgt != nil {
+				config.L2Penalty = ds.l2wgt
+			}
+
+			if ds.start != nil {
+				config.Start = ds.start
+			}
+
+			lf, err := os.Create("glm.log")
+			if err != nil {
+				panic(err)
+			}
+			defer lf.Close()
+			config.Log = log.New(lf, "", log.Lshortfile)
+
+			glm := NewGLM(ds.data.data, ds.data.varnames, "y", ds.data.xnames, config)
+			result := glm.Fit()
+
+			if ds.paramstol == 0 {
+				ds.paramstol = 1e-5
+			}
+
+			if ds.stderrtol == 0 {
+				ds.stderrtol = 1e-5
+			}
+
+			if ds.vcovtol == 0 {
+				ds.vcovtol = 1e-5
+			}
+
+			if ds.logliketol == 0 {
+				ds.logliketol = 1e-5
+			}
+
+			if ds.scaletol == 0 {
+				ds.scaletol = 1e-5
+			}
+
+			if !floats.EqualApprox(result.Params(), ds.params, ds.paramstol) {
+				tlog.Printf("%s\n", ds.title)
+				tlog.Printf("Model: %+v\n", glm)
+				tlog.Printf("Problem: %+v\n", ds)
+				tlog.Printf("Parameter estimates disagree:\n")
+				tlog.Printf("Expected: %v\n", ds.params)
+				tlog.Printf("Found:    %v\n", result.Params())
+				t.Fail()
+			}
+
+			if math.Abs(result.Scale()-ds.scale) > ds.scaletol {
+				tlog.Printf("%s\n", ds.title)
+				tlog.Printf("Model: %+v\n", glm)
+				tlog.Printf("Problem: %+v\n", ds)
+				tlog.Printf("Scale estimates disagree:\n")
+				tlog.Printf("Expected: %v\n", ds.scale)
+				tlog.Printf("Found:    %v\n", result.Scale())
+				t.Fail()
+			}
+
+			// No stderr or vcov with regularization
+			if ds.l2wgt != nil || ds.l1wgt != nil {
+				continue
+			}
+
+			if !scalarClose(result.LogLike(), ds.ll, ds.logliketol) {
+				tlog.Printf("%s\n", ds.title)
+				tlog.Printf("Model: %+v\n", glm)
+				tlog.Printf("Problem: %+v\n", ds)
+				tlog.Printf("Loglikelihood values disagree:\n")
+				tlog.Printf("Expected: %v\n", ds.ll)
+				tlog.Printf("Found:    %v\n", result.LogLike())
+				t.Fail()
+			}
+
+			if !floats.EqualApprox(result.StdErr(), ds.stderr, ds.stderrtol) {
+				tlog.Printf("%s\n", ds.title)
+				tlog.Printf("Model: %+v\n", glm)
+				tlog.Printf("Problem: %+v\n", ds)
+				tlog.Printf("Standard errors disagree\n")
+				tlog.Printf("Expected: %v\n", ds.stderr)
+				tlog.Printf("Found:    %v\n", result.StdErr())
+				t.Fail()
+			}
+
+			if !floats.EqualApprox(result.VCov(), ds.vcov, ds.vcovtol) {
+				tlog.Printf("%s\n", ds.title)
+				tlog.Printf("Model: %+v\n", glm)
+				tlog.Printf("Problem: %+v\n", ds)
+				tlog.Printf("vcov values disagree\n")
+				tlog.Printf("Expected: %v\n", ds.vcov)
+				tlog.Printf("Found:    %v\n", result.VCov())
+				t.Fail()
+			}
+
+			// Smoke test
+			_ = result.Summary()
 		}
 	}
 }

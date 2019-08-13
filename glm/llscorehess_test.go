@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/statmodel"
 	"gonum.org/v1/gonum/floats"
 )
 
 type ptlsh struct {
+	title   string
 	family  *Family
 	link    *Link
-	data    dstream.Dstream
+	data    dataset
 	weight  bool
 	off     bool
 	params  []float64
@@ -24,6 +24,7 @@ type ptlsh struct {
 
 var pq = []ptlsh{
 	{
+		title:   "Poisson unweighted 1",
 		family:  NewFamily(PoissonFamily),
 		weight:  false,
 		data:    data1(false),
@@ -34,6 +35,7 @@ var pq = []ptlsh{
 		obshess: []float64{-7, -10, -10, -86},
 	},
 	{
+		title:   "Poisson unweighted 2",
 		family:  NewFamily(PoissonFamily),
 		weight:  false,
 		data:    data1(false),
@@ -44,6 +46,7 @@ var pq = []ptlsh{
 		obshess: []float64{-669.4456244, -2944.68298198, -2944.68298198, -13451.94403063},
 	},
 	{
+		title:   "Binomial unweighted 1",
 		family:  NewFamily(BinomialFamily),
 		weight:  false,
 		data:    data2(false),
@@ -54,6 +57,7 @@ var pq = []ptlsh{
 		obshess: []float64{-1.75, -2.5, -2, -2.5, -21.5, 3.25, -2, 3.25, -8.5},
 	},
 	{
+		title:  "Binomial weighted 1 with non-canonical link",
 		family: NewFamily(BinomialFamily),
 		link:   NewLink(LogLink),
 		weight: true,
@@ -69,6 +73,7 @@ var pq = []ptlsh{
 			518.19721783, 2715.89536808, 941.69106211},
 	},
 	{
+		title:  "Binomial unweighted 1",
 		family: NewFamily(BinomialFamily),
 		weight: false,
 		data:   data2(false),
@@ -81,6 +86,7 @@ var pq = []ptlsh{
 			-0.02006538, 0.08233338, -0.02006538, -1.05735013},
 	},
 	{
+		title:  "Binomial unweighted 1",
 		family: NewFamily(BinomialFamily),
 		weight: false,
 		data:   data2(false),
@@ -93,6 +99,7 @@ var pq = []ptlsh{
 			-2.86562434, -0.68818286, -2.86562434, -1.18506228},
 	},
 	{
+		title:  "Gamma weighted 1",
 		family: NewFamily(GammaFamily),
 		weight: true,
 		data:   data4(true),
@@ -107,6 +114,7 @@ var pq = []ptlsh{
 			-1401.23611111, 7981.70833333, -8048.80555556},
 	},
 	{
+		title:  "Inverse Gaussian weighted 1",
 		family: NewFamily(InvGaussianFamily),
 		weight: true,
 		data:   data4(true),
@@ -121,6 +129,7 @@ var pq = []ptlsh{
 			-112.07064966, 625.27145184, -640.63104102},
 	},
 	{
+		title:  "Negative binomial 1",
 		family: NewNegBinomFamily(1.5, NewLink(LogLink)),
 		weight: true,
 		data:   data4(true),
@@ -135,6 +144,7 @@ var pq = []ptlsh{
 			-9.90658666, -20.30041455, -12.13755286},
 	},
 	{
+		title:  "Poisson unweighted 3",
 		family: NewFamily(PoissonFamily),
 		weight: true,
 		data:   data5(true),
@@ -151,22 +161,25 @@ var pq = []ptlsh{
 
 func TestLLScoreHess(t *testing.T) {
 
-	for pj, ps := range pq {
+	for _, ps := range pq {
 
-		glm := NewGLM(ps.data, "y")
+		config := DefaultConfig()
 
-		glm = glm.Family(ps.family)
+		config.Family = ps.family
 
 		if ps.link != nil {
-			glm = glm.Link(ps.link)
+			config.Link = ps.link
 		}
+
 		if ps.weight {
-			glm = glm.Weight("w")
+			config.WeightVar = "w"
 		}
+
 		if ps.off {
-			glm = glm.Offset("off")
+			config.OffsetVar = "off"
 		}
-		glm = glm.Done()
+
+		glm := NewGLM(ps.data.data, ps.data.varnames, "y", ps.data.xnames, config)
 
 		m := glm.NumParams()
 		score := make([]float64, m)
@@ -174,25 +187,45 @@ func TestLLScoreHess(t *testing.T) {
 
 		ll := glm.LogLike(&GLMParams{ps.params, 1}, true)
 		if !scalarClose(ll, ps.ll, 1e-5) {
-			fmt.Printf("LogLike %d:\n", pj)
+			fmt.Printf("%s\n", ps.title)
+			fmt.Printf("Log-likelihoods do not agree\n")
+			fmt.Printf("Test problem: %+v\n", ps)
+			fmt.Printf("Model: %+v\n", glm)
+			fmt.Printf("Got: %v\n", ll)
+			fmt.Printf("Expected %v:\n", ps.ll)
 			t.Fail()
 		}
 
 		glm.Score(&GLMParams{ps.params, 1}, score)
 		if !floats.EqualApprox(score, ps.score, 1e-5) {
-			fmt.Printf("Score %d:\n", pj)
+			fmt.Printf("%s\n", ps.title)
+			fmt.Printf("Scores do not agree\n")
+			fmt.Printf("Test problem: %+v\n", ps)
+			fmt.Printf("Model: %+v\n", glm)
+			fmt.Printf("Got: %+v\n", score)
+			fmt.Printf("Expected %v:\n", ps.score)
 			t.Fail()
 		}
 
 		glm.Hessian(&GLMParams{ps.params, 1}, statmodel.ExpHess, hess)
 		if !floats.EqualApprox(hess, ps.exphess, 1e-5) {
-			fmt.Printf("Hessian %d:\n", pj)
+			fmt.Printf("%s\n", ps.title)
+			fmt.Printf("Expected Hessians do not agree\n")
+			fmt.Printf("Test problem: %+v\n", ps)
+			fmt.Printf("Model: %+v\n", glm)
+			fmt.Printf("Got: %+v\n", hess)
+			fmt.Printf("Expected %v:\n", ps.exphess)
 			t.Fail()
 		}
 
 		glm.Hessian(&GLMParams{ps.params, 1}, statmodel.ObsHess, hess)
 		if !floats.EqualApprox(hess, ps.obshess, 1e-5) {
-			fmt.Printf("Hessian %d:\n", pj)
+			fmt.Printf("%s\n", ps.title)
+			fmt.Printf("Observed Hessians do not agree\n")
+			fmt.Printf("Test problem: %+v\n", ps)
+			fmt.Printf("Model: %+v\n", glm)
+			fmt.Printf("Got: %+v\n", hess)
+			fmt.Printf("Expected %v:\n", ps.obshess)
 			t.Fail()
 		}
 	}

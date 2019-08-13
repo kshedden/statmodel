@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/glm"
 	"golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -34,7 +33,13 @@ func genNegBinom(mean, disp float64) float64 {
 	return po.Rand()
 }
 
-func simulate(n int, disp float64) dstream.Dstream {
+type dataset struct {
+	data     [][]float64
+	varnames []string
+	xnames   []string
+}
+
+func simulate(n int, disp float64) dataset {
 
 	x1 := make([]float64, n)
 	x2 := make([]float64, n)
@@ -58,8 +63,11 @@ func simulate(n int, disp float64) dstream.Dstream {
 		y[i] = genNegBinom(mn[i], disp)
 	}
 
-	return dstream.NewFromFlat([]interface{}{y, icept, x1, x2},
-		[]string{"y", "icept", "x1", "x2"})
+	return dataset{
+		data:     [][]float64{y, icept, x1, x2},
+		varnames: []string{"y", "icept", "x1", "x2"},
+		xnames:   []string{"icept", "x1", "x2"},
+	}
 }
 
 func main() {
@@ -71,7 +79,11 @@ func main() {
 	data := simulate(n, disp)
 
 	link := glm.NewLink(glm.LogLink)
-	model := glm.NewGLM(data, "y").Family(glm.NewNegBinomFamily(disp, link)).Done()
+
+	c := glm.DefaultConfig()
+	c.Family = glm.NewNegBinomFamily(disp, link)
+
+	model := glm.NewGLM(data.data, data.varnames, "y", data.xnames, c)
 	result := model.Fit()
 	fmt.Printf("%v\n", result.Summary())
 

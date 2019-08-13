@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/glm"
 	"golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -44,7 +43,13 @@ func genTweedie(mu, p, sig2 float64) float64 {
 	return z
 }
 
-func simulate(n int, pw, scale float64) dstream.Dstream {
+type dataset struct {
+	data     [][]float64
+	varnames []string
+	xnames   []string
+}
+
+func simulate(n int, pw, scale float64) dataset {
 
 	x1 := make([]float64, n)
 	x2 := make([]float64, n)
@@ -68,8 +73,11 @@ func simulate(n int, pw, scale float64) dstream.Dstream {
 		y[i] = genTweedie(mn[i], pw, scale)
 	}
 
-	return dstream.NewFromFlat([]interface{}{y, icept, x1, x2},
-		[]string{"y", "icept", "x1", "x2"})
+	return dataset{
+		data:     [][]float64{y, icept, x1, x2},
+		varnames: []string{"y", "icept", "x1", "x2"},
+		xnames:   []string{"icept", "x1", "x2"},
+	}
 }
 
 func main() {
@@ -78,7 +86,11 @@ func main() {
 	data := simulate(2000, 1.5, 2)
 
 	link := glm.NewLink(glm.LogLink)
-	model := glm.NewGLM(data, "y").Family(glm.NewTweedieFamily(1.5, link)).Done()
+
+	c := glm.DefaultConfig()
+	c.Family = glm.NewTweedieFamily(1.5, link)
+
+	model := glm.NewGLM(data.data, data.varnames, "y", data.xnames, c)
 	result := model.Fit()
 	fmt.Printf("%v\n", result.Summary())
 

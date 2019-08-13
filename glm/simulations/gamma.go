@@ -13,12 +13,17 @@ import (
 
 	"golang.org/x/exp/rand"
 
-	"github.com/kshedden/dstream/dstream"
 	"github.com/kshedden/statmodel/glm"
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
-func simulate(n int, scale float64) dstream.Dstream {
+type dataset struct {
+	data     [][]float64
+	varnames []string
+	xnames   []string
+}
+
+func simulate(n int, scale float64) dataset {
 
 	rng := rand.NewSource(4523745)
 
@@ -45,8 +50,11 @@ func simulate(n int, scale float64) dstream.Dstream {
 		y[i] = g.Rand()
 	}
 
-	return dstream.NewFromFlat([]interface{}{y, icept, x1, x2},
-		[]string{"y", "icept", "x1", "x2"})
+	return dataset{
+		data:     [][]float64{y, icept, x1, x2},
+		varnames: []string{"y", "icept", "x1", "x2"},
+		xnames:   []string{"icept", "x1", "x2"},
+	}
 }
 
 func main() {
@@ -58,7 +66,11 @@ func main() {
 		fmt.Printf("n=%d\n\n", n)
 		data := simulate(1000, scale)
 
-		model := glm.NewGLM(data, "y").Family(glm.NewFamily(glm.GammaFamily)).Link(glm.NewLink(glm.LogLink)).Done()
+		c := glm.DefaultConfig()
+		c.Family = glm.NewFamily(glm.GammaFamily)
+		c.Link = glm.NewLink(glm.LogLink)
+
+		model := glm.NewGLM(data.data, data.varnames, "y", data.xnames, c)
 		result := model.Fit()
 		fmt.Printf("%v\n", result.Summary())
 

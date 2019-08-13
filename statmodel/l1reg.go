@@ -3,89 +3,29 @@ package statmodel
 import (
 	"fmt"
 	"math"
-
-	"github.com/kshedden/dstream/dstream"
 )
 
-// A FocusCreator derives a focusable model from a general regression model.
-type FocusCreator interface {
-
-	// Returns a focusable copy of the parent model
-	GetFocusable() ModelFocuser
-
-	// Returns the number of coefficients in the original
-	// (unfocused) model.
+type Focuser interface {
 	NumParams() int
-}
-
-// A ModelFocuser is a regression model that can be focused on one
-// covariate, placing the effects of all other covariates into the
-// offset.
-type ModelFocuser interface {
-
-	// Log-likelihood of the full model
+	NumObs() int
+	Focus(int, []float64, []float64) RegFitter
 	LogLike(Parameter, bool) float64
-
-	// Score function of the full model
 	Score(Parameter, []float64)
-
-	// Hessian matrix of the full model
 	Hessian(Parameter, HessType, []float64)
-
-	// The number of covariates in the model
-	NumParams() int
-
-	// Focus the model on the given covariate, using the given
-	// coefficients.
-	Focus(int, []float64, float64)
-
-	// The dataset used to fit the model
-	DataSet() dstream.Dstream
-}
-
-// model1d is a convenience class that modifies the signatures of the
-// likelihood, score and Hessian functions for single parameter
-// models.
-type model1d struct {
-	model ModelFocuser
-	param Parameter
-}
-
-func (m1 *model1d) LogLike(x float64, exact bool) float64 {
-	m1.param.SetCoeff([]float64{x})
-	return m1.model.LogLike(m1.param, exact)
-}
-
-func (m1 *model1d) Score(x float64) float64 {
-	m1.param.SetCoeff([]float64{x})
-	s := []float64{0}
-	m1.model.Score(m1.param, s)
-	return s[0]
-}
-
-func (m1 *model1d) Hessian(x float64) float64 {
-	m1.param.SetCoeff([]float64{x})
-	h := []float64{0}
-	m1.model.Hessian(m1.param, ObsHess, h)
-	return h[0]
 }
 
 // FitL1Reg fits the provided L1RegFitter and returns the array of
 // parameter values.
-func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64,
-	checkstep bool) Parameter {
+func FitL1Reg(model Focuser, param Parameter, l1wgt, offset []float64, checkstep bool) Parameter {
 
 	maxiter := 400
 
-	// A parameter for the 1-d focused model, sharing all
-	// non-coefficient parameters.
+	// A parameter for the 1-d focused model.
 	param1d := param.Clone()
 	param1d.SetCoeff([]float64{0})
 
-	nvar := rf.NumParams()
-	rf1 := rf.GetFocusable()
-	nobs := rf1.DataSet().NumObs()
-	m1 := model1d{rf1, param1d}
+	nvar := model.NumParams()
+	nobs := model.NumObs()
 
 	// Since we are using non-normalized log-likelihood, the
 	// tolerance can scale with the sample size.
@@ -106,12 +46,8 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64,
 		for j := 0; j < nvar; j++ {
 
 			// Get the new point
-			wt := 0.0
-			if l2wgt != nil {
-				wt = l2wgt[j]
-			}
-			rf1.Focus(j, coeff, wt)
-			np := opt1d(m1, coeff[j], float64(nobs)*l1wgt[j], checkstep)
+			fmodel := model.Focus(j, coeff, offset)
+			np := opt1d(fmodel, coeff[j], param1d, float64(nobs)*l1wgt[j], checkstep)
 
 			// Update the change measure
 			d := math.Abs(np - coeff[j])
@@ -127,20 +63,21 @@ func FitL1Reg(rf FocusCreator, param Parameter, l1wgt, l2wgt, xn []float64,
 		}
 	}
 
-	for j := range coeff {
-		coeff[j] /= xn[j]
-	}
-
 	return param
 }
 
 // Use a local quadratic approximation, then fall back to a line
 // search if needed.
-func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
+func opt1d(m1 RegFitter, coeff float64, par Parameter, l1wgt float64, checkstep bool) float64 {
 
 	// Quadratic approximation coefficients
-	b := -m1.Score(coeff)
-	c := -m1.Hessian(coeff)
+	bv := make([]float64, 1)
+	par.SetCoeff([]float64{coeff})
+	m1.Score(par, bv)
+	b := -bv[0]
+	cv := make([]float64, 1)
+	m1.Hessian(par, ObsHess, cv)
+	c := -cv[0]
 
 	// The optimum point of the quadratic approximation
 	d := b - c*coeff
@@ -166,15 +103,18 @@ func opt1d(m1 model1d, coeff float64, l1wgt float64, checkstep bool) float64 {
 
 	// Check whether the new point improves the target function.
 	// This check is a bit expensive and not necessary for OLS
-	f0 := -m1.LogLike(coeff, false) + l1wgt*math.Abs(coeff)
-	f1 := -m1.LogLike(coeff+h, false) + l1wgt*math.Abs(coeff+h)
+	par.SetCoeff([]float64{coeff})
+	f0 := -m1.LogLike(par, false) + l1wgt*math.Abs(coeff)
+	par.SetCoeff([]float64{coeff + h})
+	f1 := -m1.LogLike(par, false) + l1wgt*math.Abs(coeff+h)
 	if f1 <= f0+1e-10 {
 		return coeff + h
 	}
 
 	// Wrap the log-likelihood so it takes a scalar argument.
 	fw := func(z float64) float64 {
-		f := -m1.LogLike(z, false) + l1wgt*math.Abs(z)
+		par.SetCoeff([]float64{z})
+		f := -m1.LogLike(par, false) + l1wgt*math.Abs(z)
 		return f
 	}
 
@@ -195,19 +135,40 @@ func bisection(f func(float64) float64, xl, xu, tol float64) float64 {
 	x0, x2 = xl, xu
 	x1 = (x0 + x2) / 2
 	f1 = f(x1)
-	for k := 0; k < 10; k++ {
+	for k := 0; k < 100; k++ {
+
+		// TODO recomputing some values here
 		f0 = f(x0)
+		f1 = f(x1)
 		f2 = f(x2)
 
 		if f1 < f0 && f1 < f2 {
 			success = true
 			break
 		}
-		x0 = x1 - 10*(x1-x0)
-		x2 = x1 + 10*(x2-x1)
+
+		if f0 > f1 && f1 > f2 {
+			// Slide right
+			x0 = x1
+			x1 = x2
+			x2 += 1.5 * (x1 - x0)
+			continue
+		}
+
+		if f0 < f1 && f1 < f2 {
+			// Slide left
+			x1 = x0
+			x2 = x1
+			x0 -= 1.5 * (x2 - x1)
+			continue
+		}
+
+		x0 = x1 - 2*(x1-x0)
+		x2 = x1 + 2*(x2-x1)
 	}
 
 	if !success {
+		fmt.Printf("Did not find bracket...\n")
 		if f0 < f1 && f0 < f2 {
 			return x0
 		} else if f1 < f0 && f1 < f2 {

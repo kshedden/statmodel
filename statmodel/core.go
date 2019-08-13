@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"gonum.org/v1/gonum/mat"
-
-	"github.com/kshedden/dstream/dstream"
 )
+
+type Dtype = float64
 
 // HessType indicates the type of a Hessian matrix for a log-likelihood.
 type HessType int
@@ -53,18 +53,37 @@ type Parameter interface {
 	Clone() Parameter
 }
 
+type GenericParameter struct {
+	params []float64
+}
+
+func (gp GenericParameter) GetCoeff() []float64 {
+	return gp.params
+}
+
+func (gp GenericParameter) SetCoeff(x []float64) {
+	copy(gp.params, x)
+}
+
+func (gp GenericParameter) Clone() Parameter {
+	y := GenericParameter{params: make([]float64, len(gp.params))}
+	copy(y.params, gp.params)
+	return y
+}
+
 // RegFitter is a regression model that can be fit to data.
 type RegFitter interface {
 
 	// Number of parameters in the model.
 	NumParams() int
 
-	// Positions of the covariates in the Dstream
+	// Number of observations in the data set
+	NumObs() int
+
+	// Positions of the covariates
 	Xpos() []int
 
-	// The dataset, including covariates and outcomes, and if
-	// relevant, weights, strata, and other variables.
-	DataSet() dstream.Dstream
+	Dataset() [][]Dtype
 
 	// The log-likelihood function
 	LogLike(Parameter, bool) float64
@@ -121,51 +140,27 @@ func (rslt *BaseResults) Model() RegFitter {
 // to fit the model.  Otherwise, the provided data stream is used to
 // produce the fitted values, so it must have the same columns as the
 // training data.
-func (rslt *BaseResults) FittedValues(da dstream.Dstream) []float64 {
+func (rslt *BaseResults) FittedValues(da [][]Dtype) []float64 {
 
-	// Training data, covariate names, and positions
-	tdat := rslt.model.DataSet()
-	tnames := tdat.Names()
-	tpos := rslt.model.Xpos()
+	xpos := rslt.model.Xpos()
 
 	if da == nil {
 		// Use training data to get the fitted values
-		da = tdat
+		da = rslt.model.Dataset()
 	}
 
-	// Variable to position map for predicting data.
-	pmap := make(map[string]int)
-	for k, v := range da.Names() {
-		pmap[v] = k
+	if len(da) != len(rslt.model.Dataset()) {
+		msg := fmt.Sprintf("Data has incorrect number of columns, %d != %d\n",
+			len(da), len(rslt.model.Dataset()))
+		panic(msg)
 	}
 
-	// Positions of the variables in the data used to produce
-	// fitted values.
-	var ppos []int
-	for _, k := range tpos {
-		na := tnames[k]
-		pos, ok := pmap[na]
-		if !ok {
-			msg := fmt.Sprintf("Variable '%s' not found.\n", na)
-			panic(msg)
+	fv := make([]float64, rslt.model.NumObs())
+	for k, j := range xpos {
+		z := da[j]
+		for i := range z {
+			fv[i] += rslt.params[k] * float64(z[i])
 		}
-		ppos = append(ppos, pos)
-	}
-
-	fv := make([]float64, da.NumObs())
-	var ii int
-
-	da.Reset()
-	for da.Next() {
-		var n int
-		for k, j := range ppos {
-			z := da.GetPos(j).([]float64)
-			n = len(z)
-			for i, v := range z {
-				fv[ii+i] += rslt.params[k] * v
-			}
-		}
-		ii += n
 	}
 
 	return fv
