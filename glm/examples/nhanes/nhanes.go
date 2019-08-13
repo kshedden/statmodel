@@ -1,28 +1,29 @@
 // +build ignore
 
-// Some examples of fitting GLM's to NHANES data.
+// This script contains some examples of fitting GLM's to NHANES data.
 //
-// To prepare, download the demographics (DEMO_G.XPT) and blood
-// pressure (BPX_G.XPT) data from here:
+// The dstream Go package is used to prepare the data for analysis.
+//
+// Prior to running this script, download the NHANES demographics (DEMO_G.XPT)
+// and blood pressure (BPX_G.XPT) data from here:
 //
 // https://wwwn.cdc.gov/Nchs/Nhanes/Search/DataPage.aspx?Component=Examination&CycleBeginYear=2011
 //
-// I don't know of a Go reader for SAS XPT files.  This script is set
-// up to use a merged dataset in csv format.  This can be accomplised
-// using the following Python script:
+// This script uses a merged dataset in csv format.  To obtain this dataset
+// run the following Python program:
 //
-// # Python script below, requires Pandas
-// import pandas as pd
+//  # Python script below, requires Pandas
+//  import pandas as pd
 //
-// fn1 = "DEMO_G.XPT"
-// fn2 = "BPX_G.XPT"
+//  fn1 = "DEMO_G.XPT"
+//  fn2 = "BPX_G.XPT"
 //
-// ds1 = pd.read_sas(fn1)
-// ds2 = pd.read_sas(fn2)
+//  ds1 = pd.read_sas(fn1)
+//  ds2 = pd.read_sas(fn2)
 //
-// ds = pd.merge(ds1, ds2, left_on="SEQN", right_on="SEQN")
+//  ds = pd.merge(ds1, ds2, left_on="SEQN", right_on="SEQN")
 //
-// ds.to_csv("nhanes.csv.gz", index=False, compression="gzip")
+//  ds.to_csv("nhanes.csv.gz", index=False, compression="gzip")
 
 package main
 
@@ -64,6 +65,28 @@ func getData() dstream.Dstream {
 	return dsc
 }
 
+func getDataset(ds dstream.Dstream, yname string) statmodel.Dataset {
+
+	varnames := ds.Names()
+	var xnames []string
+	for _, v := range varnames {
+		if v != yname {
+			xnames = append(xnames, v)
+		}
+	}
+
+	da := make([][]float64, ds.NumVar())
+	ds.Reset()
+	for ds.Next() {
+		for j := 0; j < ds.NumVar(); j++ {
+			da[j] = append(da[j], ds.GetPos(j).([]float64)...)
+		}
+	}
+
+	return statmodel.NewDataset(da, varnames, yname, xnames)
+
+}
+
 func model1() {
 
 	msg := `
@@ -81,8 +104,9 @@ males and 2 for females.
 	f2 := dstream.MemCopy(f1, false)
 	f3 := dstream.DropNA(f2)
 
-	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f3, "BPXSY1").Family(fam).Done()
+	da := getDataset(f3, "BPXSY1")
+
+	glm := glm.NewGLM(da, nil)
 	rslt := glm.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -106,8 +130,9 @@ race/multiracial) as the reference category.
 	f2 := dstream.MemCopy(f1, false)
 	f2 = dstream.DropNA(f2)
 
-	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).Done()
+	da := getDataset(f2, "BPXSY1")
+
+	glm := glm.NewGLM(da, nil)
 	rslt := glm.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -132,8 +157,9 @@ and age as covariates.  Ethnicity is a categorical covariate with level
 	f2 := dstream.MemCopy(f1, false)
 	f2 = dstream.DropNA(f2)
 
-	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).Done()
+	da := getDataset(f2, "BPXSY1")
+
+	glm := glm.NewGLM(da, nil)
 	rslt := glm.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -157,6 +183,10 @@ zero penalty for the intercept.
 	f1 = dstream.DropNA(f1)
 	f2 := dstream.MemCopy(f1, false)
 
+	da := getDataset(f2, "BPXSY1")
+
+	c := glm.DefaultConfig()
+
 	wt := 0.01
 	l1pen := make(map[string]float64)
 	for _, v := range f2.Names() {
@@ -164,10 +194,9 @@ zero penalty for the intercept.
 			l1pen[v] = wt
 		}
 	}
+	c.L1Penalty = l1pen
 
-	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).L1Penalty(l1pen).CovariateScale(statmodel.L2Norm).Done()
-
+	glm := glm.NewGLM(da, c)
 	rslt := glm.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -202,9 +231,9 @@ using a square root transform in the formula.
 	f2 := dstream.MemCopy(f1, false)
 	f2 = dstream.DropNA(f2)
 
-	fam := glm.NewFamily(glm.GaussianFamily)
-	glm := glm.NewGLM(f2, "BPXSY1").Family(fam).Done()
+	da := getDataset(f2, "BPXSY1")
 
+	glm := glm.NewGLM(da, nil)
 	rslt := glm.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -242,8 +271,11 @@ the dependent variable, and gender and age as predictors.
 	f2 := dstream.MemCopy(f1, false)
 	f3 := dstream.DropNA(f2)
 
-	fam := glm.NewFamily(glm.BinomialFamily)
-	glm := glm.NewGLM(f3, "BP").Family(fam).CovariateScale(statmodel.L2Norm).Done()
+	da := getDataset(f3, "BP")
+
+	c := glm.DefaultConfig()
+	c.Family = glm.NewFamily(glm.BinomialFamily)
+	glm := glm.NewGLM(da, c)
 	rslt := glm.Fit()
 
 	smry := rslt.Summary()
@@ -274,11 +306,14 @@ variables.
 	f2 := dstream.MemCopy(f1, false)
 	f3 := dstream.DropNA(f2)
 
-	l1pen := map[string]float64{"RIAGENDR": 1}
-	l2pen := map[string]float64{"RIAGENDR": 0.01, "RIDAGEYR": 0.01}
+	da := getDataset(f3, "BP")
 
-	fam := glm.NewFamily(glm.BinomialFamily)
-	glm := glm.NewGLM(f3, "BP").Family(fam).L1Penalty(l1pen).L2Penalty(l2pen).CovariateScale(statmodel.L2Norm).Done()
+	c := glm.DefaultConfig()
+	c.Family = glm.NewFamily(glm.BinomialFamily)
+	c.L1Penalty = map[string]float64{"RIAGENDR": 1}
+	c.L2Penalty = map[string]float64{"RIAGENDR": 0.01, "RIDAGEYR": 0.01}
+
+	glm := glm.NewGLM(da, c)
 	rslt := glm.Fit()
 	smry := rslt.Summary()
 
