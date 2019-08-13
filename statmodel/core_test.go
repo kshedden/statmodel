@@ -6,41 +6,41 @@ import (
 	"gonum.org/v1/gonum/floats"
 )
 
-func data1() ([]string, [][]dtype) {
-	x := [][]dtype{
-		[]dtype{0, 1, 3, 2, 1, 1, 0},
-		[]dtype{1, 1, 1, 1, 1, 1, 1},
-		[]dtype{4, 1, -1, 3, 5, -5, 3},
+func data1() ([]string, [][]Dtype) {
+	x := [][]Dtype{
+		[]Dtype{0, 1, 3, 2, 1, 1, 0},
+		[]Dtype{1, 1, 1, 1, 1, 1, 1},
+		[]Dtype{4, 1, -1, 3, 5, -5, 3},
 	}
 	return []string{"y", "x1", "x2"}, x
 }
 
-func data1b() ([]string, [][]dtype) {
-	x := [][]dtype{
-		[]dtype{0, 1, 3, 2, 1, 1, 0},
-		[]dtype{1, 1, 1, 1, 1, 1, 1},
-		[]dtype{8, 2, -2, 6, 10, -10, 6},
+func data1b() ([]string, [][]Dtype) {
+	x := [][]Dtype{
+		[]Dtype{0, 1, 3, 2, 1, 1, 0},
+		[]Dtype{1, 1, 1, 1, 1, 1, 1},
+		[]Dtype{8, 2, -2, 6, 10, -10, 6},
 	}
 	return []string{"y", "x1", "x2"}, x
 }
 
-func data2() ([]string, [][]dtype) {
-	x := [][]dtype{
-		[]dtype{0, 0, 1, 0, 1, 0, 0},
-		[]dtype{1, 1, 1, 1, 1, 1, 1},
-		[]dtype{4, 1, -1, 3, 5, -5, 3},
-		[]dtype{1, -1, 1, 1, 2, 5, -1},
+func data2() ([]string, [][]Dtype) {
+	x := [][]Dtype{
+		[]Dtype{0, 0, 1, 0, 1, 0, 0},
+		[]Dtype{1, 1, 1, 1, 1, 1, 1},
+		[]Dtype{4, 1, -1, 3, 5, -5, 3},
+		[]Dtype{1, -1, 1, 1, 2, 5, -1},
 	}
 	return []string{"y", "x1", "x2", "x3"}, x
 }
 
 // A mock model for testing
 type Mock struct {
-	data [][]dtype
+	data [][]Dtype
 	xpos []int
 }
 
-func (m *Mock) Dataset() [][]dtype {
+func (m *Mock) Dataset() [][]Dtype {
 	return m.data
 }
 

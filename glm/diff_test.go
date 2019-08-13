@@ -1,9 +1,14 @@
+// Test GLM log-likelihood and score functions using numeric derivatives.  The
+// tests confirm that the analytic score function agrees with the numeric
+// derivative of the log-likelihood function.
+
 package glm
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/kshedden/statmodel/statmodel"
 	"gonum.org/v1/gonum/diff/fd"
 	"gonum.org/v1/gonum/floats"
 )
@@ -12,7 +17,7 @@ import (
 type difftestprob struct {
 	title  string
 	family *Family
-	data   dataset
+	data   statmodel.Dataset
 	weight bool
 	offset bool
 	params [][]float64
@@ -97,7 +102,7 @@ func TestGrad(t *testing.T) {
 			config.WeightVar = "w"
 		}
 
-		glm := NewGLM(dt.data.data, dt.data.varnames, "y", dt.data.xnames, config)
+		glm := NewGLM(dt.data, config)
 
 		p := len(dt.params[0])
 		ngrad := make([]float64, p)

@@ -18,13 +18,7 @@ func scalarClose(x, y, eps float64) bool {
 	return math.Abs(x-y) <= eps
 }
 
-type dataset struct {
-	data     [][]statmodel.Dtype
-	varnames []string
-	xnames   []string
-}
-
-func data1(wgt bool) dataset {
+func data1(wgt bool) statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
@@ -39,10 +33,10 @@ func data1(wgt bool) dataset {
 		varnames = append(varnames, "w")
 	}
 
-	return dataset{data: data, varnames: varnames, xnames: xnames}
+	return statmodel.NewDataset(data, varnames, "y", xnames)
 }
 
-func data2(wgt bool) dataset {
+func data2(wgt bool) statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 0, 1, 0, 1, 0, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
@@ -58,10 +52,10 @@ func data2(wgt bool) dataset {
 		varnames = append(varnames, "w")
 	}
 
-	return dataset{data: data, varnames: varnames, xnames: xnames}
+	return statmodel.NewDataset(data, varnames, "y", xnames)
 }
 
-func data3(wgt bool) dataset {
+func data3(wgt bool) statmodel.Dataset {
 
 	y := []statmodel.Dtype{1, 1, 1, 0, 0, 0, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
@@ -76,10 +70,10 @@ func data3(wgt bool) dataset {
 		varnames = append(varnames, "w")
 	}
 
-	return dataset{data: data, varnames: varnames, xnames: xnames}
+	return statmodel.NewDataset(data, varnames, "y", xnames)
 }
 
-func data4(wgt bool) dataset {
+func data4(wgt bool) statmodel.Dataset {
 
 	y := []statmodel.Dtype{3, 1, 5, 4, 2, 3, 6}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
@@ -95,10 +89,10 @@ func data4(wgt bool) dataset {
 		varnames = append(varnames, "w")
 	}
 
-	return dataset{data: data, varnames: varnames, xnames: xnames}
+	return statmodel.NewDataset(data, varnames, "y", xnames)
 }
 
-func data5(wgt bool) dataset {
+func data5(wgt bool) statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
@@ -114,14 +108,14 @@ func data5(wgt bool) dataset {
 		varnames = append(varnames, "w")
 	}
 
-	return dataset{data: data, varnames: varnames, xnames: xnames}
+	return statmodel.NewDataset(data, varnames, "y", xnames)
 }
 
 // A test problem
 type testprob struct {
 	title      string
 	family     *Family
-	data       dataset
+	data       statmodel.Dataset
 	weight     bool
 	offset     bool
 	start      []float64
@@ -609,7 +603,7 @@ func TestFit(t *testing.T) {
 			defer lf.Close()
 			config.Log = log.New(lf, "", log.Lshortfile)
 
-			glm := NewGLM(ds.data.data, ds.data.varnames, "y", ds.data.xnames, config)
+			glm := NewGLM(ds.data, config)
 			result := glm.Fit()
 
 			if ds.paramstol == 0 {

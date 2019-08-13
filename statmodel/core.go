@@ -10,7 +10,73 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+// Dtype is a type alias that is used to define the datatype of all data
+// passed to the statistical models.  It should be set to float64 or float32.
 type Dtype = float64
+
+// Dataset defines a way to pass data to a statistical model.  A Dataset consists
+// of one or more variables, each of which may be the response, a predictor, or some
+// other variable in a statistical model (e.g. a weight or stratifying variable).
+// Data()[k] is the k^th variable in the dataset, and the name of this variable is
+// Varnames()[k].  Yname() and Xnames() return variables that are the dependent
+// variable and independent variables in a regression model, respectively.
+type Dataset interface {
+
+	// Data returns all variables in the dataset, stored column-wise.
+	Data() [][]Dtype
+
+	// Varnames returns the names of the variables in the regression model,
+	// in the same order as the data are returned by Data.
+	Varnames() []string
+
+	// Yname returns the name of the dependent variable in a regression model.
+	Yname() string
+
+	// Xnames returns the names of the independent variables in a regression model.
+	Xnames() []string
+}
+
+// basicData is a simple default implementation of the Dataset interface.
+type basicData struct {
+	data     [][]Dtype
+	yname    string
+	varnames []string
+	xnames   []string
+}
+
+// NewDataset returns a dataset containing the given data columns.  varnames contains the names
+// of the variables in the same order as the appear in data.  yname and xnames are names
+// of the dependent and independent variables, respectively.
+func NewDataset(data [][]Dtype, varnames []string, yname string, xnames []string) Dataset {
+
+	if len(data) != len(varnames) {
+		msg := fmt.Sprintf("len(data)=%d and len(varnames)=%d are not compatiable\n", len(data), len(varnames))
+		panic(msg)
+	}
+
+	return &basicData{
+		data:     data,
+		varnames: varnames,
+		yname:    yname,
+		xnames:   xnames,
+	}
+}
+
+func (bd *basicData) Data() [][]Dtype {
+	return bd.data
+}
+
+func (bd *basicData) Yname() string {
+	return bd.yname
+}
+
+func (bd *basicData) Varnames() []string {
+	return bd.varnames
+}
+
+func (bd *basicData) Xnames() []string {
+	return bd.xnames
+}
 
 // HessType indicates the type of a Hessian matrix for a log-likelihood.
 type HessType int
@@ -20,20 +86,6 @@ type HessType int
 const (
 	ObsHess HessType = iota
 	ExpHess
-)
-
-// ScaleType defines the way that the covariates are scaled prior to fitting a model.  This
-// scaling is hidden from the caller, the results are back-transformed after fitting.
-type ScaleType int
-
-// NoScale indicates that covariates are not internally scaled prior to fitting, L2Norm
-// indicates that each covariate is scaled to have unit L2Norm prior to fitting, and Variance
-// indicates that each covariate is scaled to have unit variance prior to fitting.  L2Norm
-// and Variance scaling is not performed for covariates that do not vary (i.e. an intercept).
-const (
-	NoScale ScaleType = iota
-	L2Norm
-	Variance
 )
 
 // Parameter is the parameter of a model.
@@ -51,24 +103,6 @@ type Parameter interface {
 
 	// Clone creates a deep copy of the Parameter struct.
 	Clone() Parameter
-}
-
-type GenericParameter struct {
-	params []float64
-}
-
-func (gp GenericParameter) GetCoeff() []float64 {
-	return gp.params
-}
-
-func (gp GenericParameter) SetCoeff(x []float64) {
-	copy(gp.params, x)
-}
-
-func (gp GenericParameter) Clone() Parameter {
-	y := GenericParameter{params: make([]float64, len(gp.params))}
-	copy(y.params, gp.params)
-	return y
 }
 
 // RegFitter is a regression model that can be fit to data.

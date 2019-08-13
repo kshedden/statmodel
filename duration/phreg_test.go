@@ -12,13 +12,7 @@ import (
 	"github.com/kshedden/statmodel/statmodel"
 )
 
-type dataset struct {
-	data     [][]statmodel.Dtype
-	varnames []string
-	xnames   []string
-}
-
-func data1() dataset {
+func data1() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
 		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
@@ -26,14 +20,13 @@ func data1() dataset {
 		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
 	}
 
-	return dataset{
-		data:     da,
-		varnames: []string{"Time", "Status", "X"},
-		xnames:   []string{"X"},
-	}
+	varnames := []string{"Time", "Status", "X"}
+	xnames := []string{"X"}
+
+	return statmodel.NewDataset(da, varnames, "Time", xnames)
 }
 
-func data2() dataset {
+func data2() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
 		[]statmodel.Dtype{0, 1, 0, 1, 3, 2, 1, 2, 1, 3, 5},
@@ -44,14 +37,13 @@ func data2() dataset {
 		[]statmodel.Dtype{1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
 	}
 
-	return dataset{
-		data:     da,
-		varnames: []string{"Entry", "Time", "Status", "X1", "X2", "Stratum"},
-		xnames:   []string{"X1", "X2"},
-	}
+	varnames := []string{"Entry", "Time", "Status", "X1", "X2", "Stratum"}
+	xnames := []string{"X1", "X2"}
+
+	return statmodel.NewDataset(da, varnames, "Time", xnames)
 }
 
-func data3() dataset {
+func data3() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
 		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
@@ -60,14 +52,13 @@ func data3() dataset {
 		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
 	}
 
-	return dataset{
-		data:     da,
-		varnames: []string{"Time", "Status", "X1", "X2"},
-		xnames:   []string{"X1", "X2"},
-	}
+	varnames := []string{"Time", "Status", "X1", "X2"}
+	xnames := []string{"X1", "X2"}
+
+	return statmodel.NewDataset(da, varnames, "Time", xnames)
 }
 
-func data4() dataset {
+func data4() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
 		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
@@ -76,23 +67,22 @@ func data4() dataset {
 		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
 	}
 
-	return dataset{
-		data:     da,
-		varnames: []string{"Time", "Status", "X1", "X2"},
-		xnames:   []string{"X1", "X2"},
-	}
+	varnames := []string{"Time", "Status", "X1", "X2"}
+	xnames := []string{"X1", "X2"}
+
+	return statmodel.NewDataset(da, varnames, "Time", xnames)
 }
 
 // Basic check, no strata, weights, or entry times.
 func TestPhreg1(t *testing.T) {
 
 	da := data1()
-	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, nil)
+	ph := NewPHReg(da, "Status", nil)
 
 	// Create an equivalent model that has L2 penalty weights all set to zero.
 	config := DefaultPHRegConfig()
 	config.L2Penalty = map[string]float64{"X1": 0, "X2": 0}
-	phr := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, config)
+	phr := NewPHReg(da, "Status", config)
 
 	for _, pq := range []*PHReg{ph, phr} {
 		if fmt.Sprintf("%v", pq.stratumix) != "[[0 6]]" {
@@ -160,7 +150,7 @@ func TestPhreg2(t *testing.T) {
 	config.StratumVar = "Stratum"
 
 	da := data2()
-	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, config)
+	ph := NewPHReg(da, "Status", config)
 
 	expected := "[[1 2 4 5] [4 6 8]]"
 	if fmt.Sprintf("%v", ph.etimes) != expected {
@@ -275,13 +265,16 @@ func TestPhreg3(t *testing.T) {
 		time = append(time, 10/statmodel.Dtype(4+i%3+i%7-3)+0.5*(statmodel.Dtype(i%6)-2))
 	}
 
-	dat := [][]statmodel.Dtype{time, status, x1, x2, stratum}
+	da := [][]statmodel.Dtype{time, status, x1, x2, stratum}
 	varnames := []string{"time", "status", "x1", "x2", "stratum"}
+	xnames := []string{"x1", "x2"}
+
+	data := statmodel.NewDataset(da, varnames, "time", xnames)
 
 	c := DefaultPHRegConfig()
 	c.StratumVar = "stratum"
 
-	ph := NewPHReg(dat, varnames, "time", "status", []string{"x1", "x2"}, c)
+	ph := NewPHReg(data, "status", c)
 	result, err := ph.Fit()
 	if err != nil {
 		panic(err)
@@ -325,8 +318,10 @@ func TestPhregOptMethods(t *testing.T) {
 		time = append(time, 10/statmodel.Dtype(4+i%3+i%7-3)+0.5*(statmodel.Dtype(i%6)-2))
 	}
 
-	dat := [][]statmodel.Dtype{time, status, x1, x2, stratum}
+	da := [][]statmodel.Dtype{time, status, x1, x2, stratum}
 	varnames := []string{"time", "status", "x1", "x2", "stratum"}
+
+	data := statmodel.NewDataset(da, varnames, "time", []string{"x1", "x2"})
 
 	var par [][]float64
 	var std [][]float64
@@ -341,7 +336,7 @@ func TestPhregOptMethods(t *testing.T) {
 		c := DefaultPHRegConfig()
 		c.Optimizer = m
 		c.StratumVar = "stratum"
-		ph := NewPHReg(dat, varnames, "time", "status", []string{"x1", "x2"}, c)
+		ph := NewPHReg(data, "status", c)
 		result, err := ph.Fit()
 		if err != nil {
 			panic(err)
@@ -376,7 +371,7 @@ func TestPhregRegularized(t *testing.T) {
 
 		c := DefaultPHRegConfig()
 		c.L1Penalty = map[string]float64{"X1": wt, "X2": wt}
-		ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, c)
+		ph := NewPHReg(da, "Status", c)
 		rslt, err := ph.Fit()
 		if err != nil {
 			panic(err)
@@ -402,7 +397,7 @@ func TestPhregFocus(t *testing.T) {
 	c.L1Penalty = map[string]float64{"x1": wt, "x2": wt}
 	c.L2Penalty = map[string]float64{"x1": wt, "x2": wt}
 
-	ph := NewPHReg(da.data, da.varnames, "Time", "Status", da.xnames, c)
+	ph := NewPHReg(da, "Status", c)
 
 	phf := ph.Focus(0, []float64{1, 1}, nil)
 
@@ -453,29 +448,32 @@ func TestPhregFocus(t *testing.T) {
 func TestWeights(t *testing.T) {
 
 	// data1 and data2 are equivalent after taking the weights into account
-	data1 := [][]statmodel.Dtype{
+	da1 := [][]statmodel.Dtype{
 		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
 		[]statmodel.Dtype{1, 1, 0, 0, 1, 0},
 		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
 		[]statmodel.Dtype{1, 2, 1, 2, 1, 2},
 	}
-
 	varnames := []string{"Time", "Status", "X", "W"}
-	xnames := []string{"X"}
+	data1 := statmodel.NewDataset(da1, varnames, "Time", []string{"X"})
 
-	data2 := [][]statmodel.Dtype{
+	// "Unrolled" version of data1.
+	da2 := [][]statmodel.Dtype{
 		[]statmodel.Dtype{1, 1, 1, 2, 3, 3, 3, 4, 4},
 		[]statmodel.Dtype{1, 1, 1, 0, 0, 0, 1, 0, 0},
 		[]statmodel.Dtype{4, 2, 2, 5, 6, 6, 6, 5, 5},
 		[]statmodel.Dtype{1, 1, 1, 1, 1, 1, 1, 1, 1},
 	}
+	data2 := statmodel.NewDataset(da2, varnames, "Time", []string{"X"})
+
+	data3 := statmodel.NewDataset(da2[0:3], varnames[0:3], "Time", []string{"X"})
 
 	c := DefaultPHRegConfig()
 	c.WeightVar = "W"
 
-	ph1 := NewPHReg(data1, varnames, "Time", "Status", xnames, c)
-	ph2 := NewPHReg(data2[0:3], varnames[0:3], "Time", "Status", xnames, nil)
-	ph3 := NewPHReg(data2, varnames, "Time", "Status", xnames, c)
+	ph1 := NewPHReg(data1, "Status", c)
+	ph2 := NewPHReg(data2, "Status", c)
+	ph3 := NewPHReg(data3, "Status", nil)
 
 	rslt1, err := ph1.Fit()
 	if err != nil {
@@ -538,9 +536,12 @@ func TestBaselineHaz(t *testing.T) {
 			}
 		}
 
-		dat := [][]statmodel.Dtype{time, status, x}
+		da := [][]statmodel.Dtype{time, status, x}
 
-		model := NewPHReg(dat, []string{"time", "status", "x"}, "time", "status", []string{"x"}, nil)
+		varnames := []string{"time", "status", "x"}
+		data := statmodel.NewDataset(da, varnames, "time", []string{"x"})
+
+		model := NewPHReg(data, "status", nil)
 		result, err := model.Fit()
 		if err != nil {
 			panic(err)

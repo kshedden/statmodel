@@ -12,7 +12,7 @@ type ptlsh struct {
 	title   string
 	family  *Family
 	link    *Link
-	data    dataset
+	data    statmodel.Dataset
 	weight  bool
 	off     bool
 	params  []float64
@@ -179,7 +179,7 @@ func TestLLScoreHess(t *testing.T) {
 			config.OffsetVar = "off"
 		}
 
-		glm := NewGLM(ps.data.data, ps.data.varnames, "y", ps.data.xnames, config)
+		glm := NewGLM(ps.data, config)
 
 		m := glm.NumParams()
 		score := make([]float64, m)

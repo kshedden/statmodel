@@ -220,25 +220,25 @@ func DefaultConfig() *GLMConfig {
 
 // NewGLM creates a new GLM object for the given family, using its
 // default link and variance functions.
-func NewGLM(data [][]statmodel.Dtype, varnames []string, yname string, xnames []string, config *GLMConfig) *GLM {
+func NewGLM(data statmodel.Dataset, config *GLMConfig) *GLM {
 
 	if config == nil {
 		config = DefaultConfig()
 	}
 
 	pos := make(map[string]int)
-	for i, v := range varnames {
+	for i, v := range data.Varnames() {
 		pos[v] = i
 	}
 
-	ypos, ok := pos[yname]
+	ypos, ok := pos[data.Yname()]
 	if !ok {
-		msg := fmt.Sprintf("'%s' not found\n", yname)
+		msg := fmt.Sprintf("'%s' not found\n", data.Yname())
 		panic(msg)
 	}
 
 	var xpos []int
-	for _, xna := range xnames {
+	for _, xna := range data.Xnames() {
 		xp, ok := pos[xna]
 		if !ok {
 			msg := fmt.Sprintf("'%s' not found\n", xna)
@@ -267,6 +267,8 @@ func NewGLM(data [][]statmodel.Dtype, varnames []string, yname string, xnames []
 		}
 	}
 
+	varnames := data.Varnames()
+
 	penToSlice := func(m map[string]float64) []float64 {
 		if m == nil || len(m) == 0 {
 			return nil
@@ -279,8 +281,8 @@ func NewGLM(data [][]statmodel.Dtype, varnames []string, yname string, xnames []
 	}
 
 	model := &GLM{
-		data:           data,
-		varnames:       varnames,
+		data:           data.Data(),
+		varnames:       data.Varnames(),
 		ypos:           ypos,
 		xpos:           xpos,
 		weightpos:      weightpos,
@@ -298,6 +300,7 @@ func NewGLM(data [][]statmodel.Dtype, varnames []string, yname string, xnames []
 	}
 
 	model.init()
+
 	return model
 }
 
