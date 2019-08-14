@@ -334,7 +334,7 @@ func TestPhregOptMethods(t *testing.T) {
 		new(optimize.NelderMead),
 	} {
 		c := DefaultPHRegConfig()
-		c.Optimizer = m
+		c.OptMethod = m
 		c.StratumVar = "stratum"
 		ph := NewPHReg(data, "status", c)
 		result, err := ph.Fit()

@@ -105,10 +105,10 @@ type PHReg struct {
 	skip []bool
 
 	// Optimization settings
-	settings *optimize.Settings
+	optsettings *optimize.Settings
 
 	// Optimization method
-	method optimize.Method
+	optmethod optimize.Method
 
 	log *log.Logger
 
@@ -165,14 +165,18 @@ type PHRegConfig struct {
 	L1Penalty map[string]float64
 	L2Penalty map[string]float64
 
-	Optimizer optimize.Method
+	OptMethod optimize.Method
+
+	OptSettings *optimize.Settings
 }
 
 // DefaultPHRegConfig returns a default configuration struct for a proportional hazards regression.
 func DefaultPHRegConfig() *PHRegConfig {
 
 	return &PHRegConfig{
-		Optimizer: &optimize.BFGS{},
+		OptMethod: &optimize.BFGS{
+			Linesearcher: &optimize.MoreThuente{},
+		},
 	}
 }
 
@@ -251,21 +255,23 @@ func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg
 	}
 
 	ph := &PHReg{
-		data:       data.Data(),
-		varnames:   varnames,
-		timepos:    timepos,
-		statuspos:  statuspos,
-		xpos:       xpos,
-		weightpos:  weightpos,
-		offsetpos:  offsetpos,
-		entrypos:   entrypos,
-		stratumpos: stratumpos,
-		start:      config.Start,
-		l1wgt:      penToSlice(config.L1Penalty),
-		l2wgt:      penToSlice(config.L2Penalty),
-		l1wgtMap:   config.L1Penalty,
-		l2wgtMap:   config.L2Penalty,
-		log:        config.Log,
+		data:        data.Data(),
+		varnames:    varnames,
+		timepos:     timepos,
+		statuspos:   statuspos,
+		xpos:        xpos,
+		weightpos:   weightpos,
+		offsetpos:   offsetpos,
+		entrypos:    entrypos,
+		stratumpos:  stratumpos,
+		start:       config.Start,
+		l1wgt:       penToSlice(config.L1Penalty),
+		l2wgt:       penToSlice(config.L2Penalty),
+		l1wgtMap:    config.L1Penalty,
+		l2wgtMap:    config.L2Penalty,
+		log:         config.Log,
+		optsettings: config.OptSettings,
+		optmethod:   config.OptMethod,
 	}
 
 	ph.init()
@@ -1047,10 +1053,10 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 		},
 	}
 
-	if ph.settings == nil {
-		ph.settings = &optimize.Settings{}
-		ph.settings.Recorder = nil
-		ph.settings.GradientThreshold = 1e-5
+	if ph.optsettings == nil {
+		ph.optsettings = &optimize.Settings{
+			GradientThreshold: 1e-5,
+		}
 	}
 
 	var xna []string
@@ -1058,7 +1064,7 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 		xna = append(xna, ph.varnames[k])
 	}
 
-	optrslt, err := optimize.Minimize(p, ph.start, ph.settings, ph.method)
+	optrslt, err := optimize.Minimize(p, ph.start, ph.optsettings, ph.optmethod)
 	if err != nil {
 		if optrslt == nil {
 			return nil, err
@@ -1109,8 +1115,8 @@ func (model *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.
 	fmodel.statuspos = 1
 	fmodel.xpos = []int{2}
 	fmodel.start = nil // TODO
-	fmodel.settings = nil
-	fmodel.method = nil
+	fmodel.optsettings = nil
+	fmodel.optmethod = nil
 	fmodel.log = model.log
 
 	add := func(pos int) int {
