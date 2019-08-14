@@ -317,142 +317,142 @@ func NewGLM(data statmodel.Dataset, config *GLMConfig) *GLM {
 	return model
 }
 
-func (glm *GLM) setup() {
+func (model *GLM) setup() {
 
-	if glm.link == nil {
-		li := glm.fam.validLinks[0]
-		if glm.log != nil {
-			glm.log.Printf("Using default link for family: %v\n", li)
+	if model.link == nil {
+		li := model.fam.validLinks[0]
+		if model.log != nil {
+			model.log.Printf("Using default link for family: %v\n", li)
 		}
-		glm.link = NewLink(li)
+		model.link = NewLink(li)
 	}
 
-	if glm.vari == nil {
+	if model.vari == nil {
 		// Set a default variance function
-		switch glm.fam.TypeCode {
+		switch model.fam.TypeCode {
 		case BinomialFamily:
-			glm.vari = NewVariance(BinomialVar)
+			model.vari = NewVariance(BinomialVar)
 		case PoissonFamily:
-			glm.vari = NewVariance(IdentityVar)
+			model.vari = NewVariance(IdentityVar)
 		case QuasiPoissonFamily:
-			glm.vari = NewVariance(IdentityVar)
+			model.vari = NewVariance(IdentityVar)
 		case GaussianFamily:
-			glm.vari = NewVariance(ConstantVar)
+			model.vari = NewVariance(ConstantVar)
 		case GammaFamily:
-			glm.vari = NewVariance(SquaredVar)
+			model.vari = NewVariance(SquaredVar)
 		case InvGaussianFamily:
-			glm.vari = NewVariance(CubedVar)
+			model.vari = NewVariance(CubedVar)
 		case NegBinomFamily:
-			glm.vari = NewNegBinomVariance(glm.fam.alpha)
+			model.vari = NewNegBinomVariance(model.fam.alpha)
 		case TweedieFamily:
-			glm.vari = NewTweedieVariance(glm.fam.alpha)
+			model.vari = NewTweedieVariance(model.fam.alpha)
 		default:
-			msg := fmt.Sprintf("Unknown GLM family: %s\n", glm.fam.Name)
+			msg := fmt.Sprintf("Unknown GLM family: %s\n", model.fam.Name)
 			panic(msg)
 		}
-		if glm.log != nil {
-			glm.log.Printf("Using default variance for family: %v\n", glm.vari)
+		if model.log != nil {
+			model.log.Printf("Using default variance for family: %v\n", model.vari)
 		}
 	}
 }
 
-func (glm *GLM) check() {
+func (model *GLM) check() {
 
-	if glm.l1wgt != nil && len(glm.l1wgt) != len(glm.xpos) {
+	if model.l1wgt != nil && len(model.l1wgt) != len(model.xpos) {
 		msg := fmt.Sprintf("GLM: The L1 weight vector has length %d, but the model has %d covariates.\n",
-			len(glm.l1wgt), len(glm.xpos))
+			len(model.l1wgt), len(model.xpos))
 		panic(msg)
 	}
 
-	if glm.l2wgt != nil && len(glm.l2wgt) != len(glm.xpos) {
+	if model.l2wgt != nil && len(model.l2wgt) != len(model.xpos) {
 		msg := fmt.Sprintf("GLM: The L2 weight vector has length %d, but the model has %d covariates.\n",
-			len(glm.l2wgt), len(glm.xpos))
+			len(model.l2wgt), len(model.xpos))
 		panic(msg)
 	}
 }
 
-func (glm *GLM) init() *GLM {
+func (model *GLM) init() *GLM {
 
-	if glm.fam == nil {
+	if model.fam == nil {
 		msg := "A GLM family must be specified.\n"
 		panic(msg)
 	}
 
-	glm.setupDispersion()
-	glm.setupPenalty()
-	glm.setup()
+	model.setupDispersion()
+	model.setupPenalty()
+	model.setup()
 
-	if len(glm.start) == 0 {
-		glm.start = make([]float64, glm.NumParams())
+	if len(model.start) == 0 {
+		model.start = make([]float64, model.NumParams())
 	}
 
-	glm.check()
+	model.check()
 
-	return glm
+	return model
 }
 
-func (glm *GLM) setupDispersion() {
-	if glm.dispersionMethod == dispersionUnknown {
-		glm.dispersionMethod = glm.fam.dispersionDefaultMethod
-		if glm.dispersionMethod == DispersionFixed {
-			glm.dispersionValue = glm.fam.dispersionDefaultValue
+func (model *GLM) setupDispersion() {
+	if model.dispersionMethod == dispersionUnknown {
+		model.dispersionMethod = model.fam.dispersionDefaultMethod
+		if model.dispersionMethod == DispersionFixed {
+			model.dispersionValue = model.fam.dispersionDefaultValue
 		}
 	}
 
-	if glm.dispersionMethod == DispersionFixed && glm.dispersionValue <= 0 {
-		panic("A fixed dispersion value must be a postive number.")
+	if model.dispersionMethod == DispersionFixed && model.dispersionValue <= 0 {
+		panic("A fixed dispersion value must be a positive number.")
 	}
 }
 
-func (glm *GLM) setupPenalty() {
+func (model *GLM) setupPenalty() {
 
 	f := func(mp map[string]float64) []float64 {
-		wvec := make([]float64, len(glm.xpos))
-		for i, j := range glm.xpos {
-			wvec[i] = mp[glm.varnames[j]]
+		wvec := make([]float64, len(model.xpos))
+		for i, j := range model.xpos {
+			wvec[i] = mp[model.varnames[j]]
 		}
 		return wvec
 	}
 
-	if glm.l1wgtMap != nil {
-		glm.l1wgt = f(glm.l1wgtMap)
+	if model.l1wgtMap != nil {
+		model.l1wgt = f(model.l1wgtMap)
 	}
 
-	if glm.l2wgtMap != nil {
-		glm.l2wgt = f(glm.l2wgtMap)
+	if model.l2wgtMap != nil {
+		model.l2wgt = f(model.l2wgtMap)
 	}
 }
 
 // SetFamily is a convenience method that sets the family, link, and
 // variance function based on the given family name.  The link and
 // variance functions are set to their canonical values.
-func (glm *GLM) SetFamily(fam FamilyType) *GLM {
+func (model *GLM) SetFamily(fam FamilyType) *GLM {
 
 	switch fam {
 	case BinomialFamily:
-		glm.fam = &binomial
-		glm.link = NewLink(LogitLink)
-		glm.vari = NewVariance(BinomialVar)
+		model.fam = &binomial
+		model.link = NewLink(LogitLink)
+		model.vari = NewVariance(BinomialVar)
 	case PoissonFamily:
-		glm.fam = &poisson
-		glm.link = NewLink(LogLink)
-		glm.vari = NewVariance(IdentityVar)
+		model.fam = &poisson
+		model.link = NewLink(LogLink)
+		model.vari = NewVariance(IdentityVar)
 	case QuasiPoissonFamily:
-		glm.fam = &quasiPoisson
-		glm.link = NewLink(LogLink)
-		glm.vari = NewVariance(IdentityVar)
+		model.fam = &quasiPoisson
+		model.link = NewLink(LogLink)
+		model.vari = NewVariance(IdentityVar)
 	case GaussianFamily:
-		glm.fam = &gaussian
-		glm.link = NewLink(IdentityLink)
-		glm.vari = NewVariance(ConstantVar)
+		model.fam = &gaussian
+		model.link = NewLink(IdentityLink)
+		model.vari = NewVariance(ConstantVar)
 	case GammaFamily:
-		glm.fam = &gamma
-		glm.link = NewLink(RecipLink)
-		glm.vari = NewVariance(SquaredVar)
+		model.fam = &gamma
+		model.link = NewLink(RecipLink)
+		model.vari = NewVariance(SquaredVar)
 	case InvGaussianFamily:
-		glm.fam = &invGaussian
-		glm.link = NewLink(RecipSquaredLink)
-		glm.vari = NewVariance(CubedVar)
+		model.fam = &invGaussian
+		model.link = NewLink(RecipSquaredLink)
+		model.vari = NewVariance(CubedVar)
 	case NegBinomFamily:
 		panic("GLM: can't set family to NegBinom using SetFamily")
 	case TweedieFamily:
@@ -462,7 +462,7 @@ func (glm *GLM) SetFamily(fam FamilyType) *GLM {
 		panic(msg)
 	}
 
-	return glm
+	return model
 }
 
 // LogLike returns the log-likelihood value for the generalized linear

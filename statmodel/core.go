@@ -50,7 +50,7 @@ type basicData struct {
 func NewDataset(data [][]Dtype, varnames []string, yname string, xnames []string) Dataset {
 
 	if len(data) != len(varnames) {
-		msg := fmt.Sprintf("len(data)=%d and len(varnames)=%d are not compatiable\n", len(data), len(varnames))
+		msg := fmt.Sprintf("len(data)=%d and len(varnames)=%d are not compatible\n", len(data), len(varnames))
 		panic(msg)
 	}
 

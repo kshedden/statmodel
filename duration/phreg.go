@@ -301,7 +301,7 @@ func (ph *PHReg) sortByStratum() {
 	nobs := len(time)
 
 	if ph.stratumpos == -1 {
-		ph.stratumix = [][2]int{[2]int{0, nobs}}
+		ph.stratumix = [][2]int{{0, nobs}}
 		return
 	}
 

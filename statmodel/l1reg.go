@@ -5,6 +5,7 @@ import (
 	"math"
 )
 
+// Focuser restricts a model to one parameter.
 type Focuser interface {
 	NumParams() int
 	NumObs() int
@@ -185,19 +186,19 @@ func bisection(f func(float64) float64, xl, xu, tol float64) float64 {
 			xx := (x0 + x1) / 2
 			ff := f(xx)
 			if ff < f1 {
-				x2, f2 = x1, f1
+				x2 = x1
 				x1, f1 = xx, ff
 			} else {
-				x0, f0 = xx, ff
+				x0 = xx
 			}
 		} else {
 			xx := (x1 + x2) / 2
 			ff := f(xx)
 			if ff < f1 {
-				x0, f0 = x1, f1
+				x0 = x1
 				x1, f1 = xx, ff
 			} else {
-				x2, f2 = xx, ff
+				x2 = xx
 			}
 		}
 	}

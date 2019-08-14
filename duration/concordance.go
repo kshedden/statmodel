@@ -77,7 +77,7 @@ func (c *Concordance) Done() *Concordance {
 	}
 
 	// Get the survival function for censoring
-	da := dstream.NewFromArrays([][]interface{}{[]interface{}{time1}, []interface{}{statusr}},
+	da := dstream.NewFromArrays([][]interface{}{{time1}, {statusr}},
 		[]string{"Time", "Status"})
 	c.sf = NewSurvfuncRight(da, "Time", "Status").Done()
 	if ncens == 0 {

@@ -9,7 +9,7 @@ import (
 
 // ScaleProfiler is used to do likelihood profile analysis on the scale
 // parameter.  Set the Results field to a fitted GLMResults value.
-// This is suitable for models with no additonal parameters, if there
+// This is suitable for models with no additional parameters, if there
 // are other parameters (e.g. in the Tweedie or Negative Binomial
 // case), they are held fixed at their values from the provided fit.
 type ScaleProfiler struct {
