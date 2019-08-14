@@ -6,6 +6,12 @@
 __statmodel__ is a collection of [Go](http://golang.org) packages for fitting
 statistical models.
 
+All results should agree to high precision with standard statistical packaged (R, Stata, SAS, etc.).  Extensive
+unit tests against these packages are included in the test suite.
+
+All model can be fit with maximum (or quasi-maximum) likelihood estimation, with optional L1 (Lasso) or L2 (ridge)
+penalization.
+
 See the following packages for specific models:
 
 * [glm](https://github.com/kshedden/statmodel/tree/master/glm) for Generalized Linear Models

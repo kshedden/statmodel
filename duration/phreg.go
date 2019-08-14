@@ -171,7 +171,9 @@ type PHRegConfig struct {
 // DefaultPHRegConfig returns a default configuration struct for a proportional hazards regression.
 func DefaultPHRegConfig() *PHRegConfig {
 
-	return &PHRegConfig{}
+	return &PHRegConfig{
+		Optimizer: &optimize.BFGS{},
+	}
 }
 
 // zerodtype sets all elements of the slice to 0
@@ -963,7 +965,7 @@ func (ph *PHReg) failMessage(optrslt *optimize.Result) {
 			em += float64(time[i])
 		}
 		nEvent = append(nEvent, e)
-		mTime = append(mTime, float64(ix[1]-ix[0]))
+		mTime = append(mTime, em/float64(ix[1]-ix[0]))
 
 		// Track the stratum sizes
 		stSize = append(stSize, float64(ix[1]-ix[0]))
@@ -1019,12 +1021,6 @@ func (ph *PHReg) failMessage(optrslt *optimize.Result) {
 	}
 }
 
-// Optimizer sets the optimization method from gonum.Optimize.
-func (ph *PHReg) Optimizer(method optimize.Method) *PHReg {
-	ph.method = method
-	return ph
-}
-
 // Fit fits the model to the data.
 func (ph *PHReg) Fit() (*PHResults, error) {
 
@@ -1055,10 +1051,6 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 		ph.settings = &optimize.Settings{}
 		ph.settings.Recorder = nil
 		ph.settings.GradientThreshold = 1e-5
-	}
-
-	if ph.method == nil {
-		ph.method = &optimize.BFGS{}
 	}
 
 	var xna []string

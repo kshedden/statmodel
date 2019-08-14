@@ -74,7 +74,7 @@ func data4() statmodel.Dataset {
 }
 
 // Basic check, no strata, weights, or entry times.
-func TestPhreg1(t *testing.T) {
+func TestSimple(t *testing.T) {
 
 	da := data1()
 	ph := NewPHReg(da, "Status", nil)
@@ -143,7 +143,7 @@ func TestPhreg1(t *testing.T) {
 	}
 }
 
-func TestPhreg2(t *testing.T) {
+func TestStratified1(t *testing.T) {
 
 	config := DefaultPHRegConfig()
 	config.EntryVar = "Entry"
@@ -249,7 +249,7 @@ func TestPhreg2(t *testing.T) {
 	}
 }
 
-func TestPhreg3(t *testing.T) {
+func TestStratified2(t *testing.T) {
 
 	var time, status, stratum, x1, x2 []statmodel.Dtype
 

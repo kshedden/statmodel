@@ -152,7 +152,7 @@ func (model *GLM) Xpos() []int {
 	return model.xpos
 }
 
-// DataSet returns the data stream that is used to fit the model.
+// Dataset returns the data columns that are used to fit the model.
 func (model *GLM) Dataset() [][]statmodel.Dtype {
 	return model.data
 }
@@ -1283,8 +1283,8 @@ func (rslt *GLMResults) LinearPredictor(lp []float64) []float64 {
 }
 
 // Mean returns the fitted mean of the GLM for the given parameter.  If
-// the provided slice is large enough to hold the result, it is used, otherwise
-// a new slice is allocated.  The fitted means are returned.
+// the provided slice 'mn' is large enough to hold the result, it is used,
+// otherwise a new slice is allocated.  The fitted means are returned.
 func (model *GLM) Mean(pa *GLMParams, mn []float64) []float64 {
 
 	mn = model.LinearPredictor(pa, mn)
@@ -1293,10 +1293,10 @@ func (model *GLM) Mean(pa *GLMParams, mn []float64) []float64 {
 	return mn
 }
 
-// LinearPredictor returns the fitted linear predictor.  If the provided
-// slice is large enough, it is used, otherwise a new allocation is made.
-// The fitted linear predictor is returned.
-func (rslt *GLMResults) Mean(lp []float64) []float64 {
+// Mean returns the fitted mean of the GLM at the estimated parameters.  If
+// the provided slice 'mn' is large enough to hold the result, it is used,
+// otherwise a new allocation is made. The fitted means are returned.
+func (rslt *GLMResults) Mean() []float64 {
 	model := rslt.Model().(*GLM)
 	params := &GLMParams{rslt.Params(), rslt.scale}
 	return model.Mean(params, nil)
