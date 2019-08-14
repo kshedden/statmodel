@@ -114,10 +114,12 @@ func (ko *Knockoff) init() error {
 	return nil
 }
 
+// CrossProd returns the knockoff cross product matrix.
 func (ko *Knockoff) CrossProd() []float64 {
 	return ko.cpr
 }
 
+// CrossProdMinEig returns the minimum eigenvalue of the knockoff cross product matrix.
 func (ko *Knockoff) CrossProdMinEig() float64 {
 	return ko.lmin
 }
@@ -312,6 +314,7 @@ func (ko *Knockoff) Names() []string {
 	return ko.names
 }
 
+// Reset returns the knockoff datastream to its beginning.
 func (ko *Knockoff) Reset() {
 	ko.chunk = -1
 	ko.data.Reset()
@@ -362,10 +365,9 @@ func (ko *Knockoff) GetPos(j int) interface{} {
 		}
 
 		return y
-	} else {
-		// A knockoff variable
-		return ko.bdat[j-p]
 	}
+	// A knockoff variable
+	return ko.bdat[j-p]
 }
 
 // Get returns the data for the variable with the given name.
@@ -511,7 +513,7 @@ func (kr *KnockoffResult) Names() []string {
 	return kr.names
 }
 
-// Parms returns the estimated coefficients for the non-knockoff
+// Params returns the estimated coefficients for the non-knockoff
 // variables in the regression model.
 func (kr *KnockoffResult) Params() []float64 {
 	return kr.params
@@ -532,8 +534,8 @@ func (kr *KnockoffResult) FDR() []float64 {
 	return kr.fdr
 }
 
-// Create a knockoff result from a fitted regression model that has
-// been fit to a Kknockoff dataset.
+// NewKnockoffResult creates a knockoff result from a fitted regression
+// model that has been fit to a Knockoff dataset.
 func NewKnockoffResult(result BaseResultser, plus bool) *KnockoffResult {
 
 	names := result.Names()

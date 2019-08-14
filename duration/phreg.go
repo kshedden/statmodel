@@ -125,7 +125,7 @@ func (ph *PHReg) NumParams() int {
 	return len(ph.xpos)
 }
 
-// DataSet returns the data stream that is used to fit the model.
+// Dataset returns the data columns that are used to fit the model.
 func (ph *PHReg) Dataset() [][]statmodel.Dtype {
 	return ph.data
 }

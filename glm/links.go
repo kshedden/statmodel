@@ -33,6 +33,7 @@ type Link struct {
 type LinkType uint8
 
 const (
+	// Link function types
 	LogLink LinkType = iota
 	IdentityLink
 	LogitLink
