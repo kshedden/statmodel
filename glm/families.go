@@ -10,6 +10,7 @@ import (
 // FamilyType is the type of GLM family used in a model.
 type FamilyType uint8
 
+// BinomialFamily, ... are families for a GLM.
 const (
 	BinomialFamily FamilyType = iota
 	PoissonFamily

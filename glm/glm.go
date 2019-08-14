@@ -105,6 +105,7 @@ func (model *GLM) getNslice() []float64 {
 // DispersionForm indicates an approach for handling the dispersion parameter.
 type DispersionForm uint8
 
+// DispersionFixed, ... define ways to handle the dispersion parameter in a GLM.
 const (
 	dispersionUnknown DispersionForm = iota
 	DispersionFixed
@@ -805,6 +806,7 @@ func (model *GLM) Focus(pos int, coeff []float64, offset []float64) statmodel.Re
 	return &fmodel
 }
 
+// NumObs returns the number of observations used to fit the model.
 func (model *GLM) NumObs() int {
 	return len(model.data[0])
 }
@@ -1274,9 +1276,9 @@ func (model *GLM) LinearPredictor(params *GLMParams, lp []float64) []float64 {
 // LinearPredictor returns the fitted linear predictor.  If the provided
 // slice is large enough, it is used, otherwise a new allocation is made.
 // The fitted linear predictor is returned.
-func (result *GLMResults) LinearPredictor(lp []float64) []float64 {
-	model := result.Model().(*GLM)
-	params := &GLMParams{result.Params(), result.scale}
+func (rslt *GLMResults) LinearPredictor(lp []float64) []float64 {
+	model := rslt.Model().(*GLM)
+	params := &GLMParams{rslt.Params(), rslt.scale}
 	return model.LinearPredictor(params, nil)
 }
 
@@ -1294,9 +1296,9 @@ func (model *GLM) Mean(pa *GLMParams, mn []float64) []float64 {
 // LinearPredictor returns the fitted linear predictor.  If the provided
 // slice is large enough, it is used, otherwise a new allocation is made.
 // The fitted linear predictor is returned.
-func (result *GLMResults) Mean(lp []float64) []float64 {
-	model := result.Model().(*GLM)
-	params := &GLMParams{result.Params(), result.scale}
+func (rslt *GLMResults) Mean(lp []float64) []float64 {
+	model := rslt.Model().(*GLM)
+	params := &GLMParams{rslt.Params(), rslt.scale}
 	return model.Mean(params, nil)
 }
 
@@ -1316,9 +1318,9 @@ func (model *GLM) Resid(pa *GLMParams, resid []float64) []float64 {
 
 // Resid returns the residuals (observed minus fitted values) at the fitted
 // parameter value.
-func (result *GLMResults) Resid(resid []float64) []float64 {
-	model := result.Model().(*GLM)
-	params := &GLMParams{result.Params(), result.scale}
+func (rslt *GLMResults) Resid(resid []float64) []float64 {
+	model := rslt.Model().(*GLM)
+	params := &GLMParams{rslt.Params(), rslt.scale}
 	return model.Resid(params, nil)
 }
 
@@ -1367,9 +1369,9 @@ func (model *GLM) PearsonResid(pa *GLMParams, resid []float64) []float64 {
 // deviation to standardize.  If the provided slice is large enough to hold the
 // result, it is used, otherwise a new slice is allocated.  The Pearson standardized
 // residuals are returned.
-func (result *GLMResults) PearsonResid(resid []float64) []float64 {
+func (rslt *GLMResults) PearsonResid(resid []float64) []float64 {
 
-	model := result.Model().(*GLM)
-	pa := &GLMParams{result.Params(), result.scale}
+	model := rslt.Model().(*GLM)
+	pa := &GLMParams{rslt.Params(), rslt.scale}
 	return model.PearsonResid(pa, resid)
 }

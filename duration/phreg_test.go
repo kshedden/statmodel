@@ -15,9 +15,9 @@ import (
 func data1() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
-		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
-		[]statmodel.Dtype{1, 1, 0, 0, 1, 0},
-		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
+		{1, 1, 2, 3, 3, 4},
+		{1, 1, 0, 0, 1, 0},
+		{4, 2, 5, 6, 6, 5},
 	}
 
 	varnames := []string{"Time", "Status", "X"}
@@ -29,12 +29,12 @@ func data1() statmodel.Dataset {
 func data2() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
-		[]statmodel.Dtype{0, 1, 0, 1, 3, 2, 1, 2, 1, 3, 5},
-		[]statmodel.Dtype{1, 2, 4, 5, 4, 5, 6, 4, 6, 4, 8},
-		[]statmodel.Dtype{1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1},
-		[]statmodel.Dtype{4, 2, 3, 5, 1, 3, 5, 4, 2, 6, 6},
-		[]statmodel.Dtype{5, 2, 3, 1, 4, 2, 2, 5, 1, 8, 4},
-		[]statmodel.Dtype{1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
+		{0, 1, 0, 1, 3, 2, 1, 2, 1, 3, 5},
+		{1, 2, 4, 5, 4, 5, 6, 4, 6, 4, 8},
+		{1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1},
+		{4, 2, 3, 5, 1, 3, 5, 4, 2, 6, 6},
+		{5, 2, 3, 1, 4, 2, 2, 5, 1, 8, 4},
+		{1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
 	}
 
 	varnames := []string{"Entry", "Time", "Status", "X1", "X2", "Stratum"}
@@ -46,10 +46,10 @@ func data2() statmodel.Dataset {
 func data3() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
-		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
-		[]statmodel.Dtype{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
-		[]statmodel.Dtype{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
-		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
+		{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
+		{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
+		{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
+		{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
 	}
 
 	varnames := []string{"Time", "Status", "X1", "X2"}
@@ -61,10 +61,10 @@ func data3() statmodel.Dataset {
 func data4() statmodel.Dataset {
 
 	da := [][]statmodel.Dtype{
-		[]statmodel.Dtype{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
-		[]statmodel.Dtype{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
-		[]statmodel.Dtype{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
-		[]statmodel.Dtype{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
+		{1, 1, 2, 3, 3, 4, 5, 5, 6, 7},
+		{1, 1, 0, 0, 1, 0, 0, 1, 1, 1},
+		{4, 2, 5, 6, 6, 5, 4, 3, 3, 5},
+		{3, 2, 2, 0, 5, 4, 5, 6, 5, 4},
 	}
 
 	varnames := []string{"Time", "Status", "X1", "X2"}
@@ -449,20 +449,20 @@ func TestWeights(t *testing.T) {
 
 	// data1 and data2 are equivalent after taking the weights into account
 	da1 := [][]statmodel.Dtype{
-		[]statmodel.Dtype{1, 1, 2, 3, 3, 4},
-		[]statmodel.Dtype{1, 1, 0, 0, 1, 0},
-		[]statmodel.Dtype{4, 2, 5, 6, 6, 5},
-		[]statmodel.Dtype{1, 2, 1, 2, 1, 2},
+		{1, 1, 2, 3, 3, 4},
+		{1, 1, 0, 0, 1, 0},
+		{4, 2, 5, 6, 6, 5},
+		{1, 2, 1, 2, 1, 2},
 	}
 	varnames := []string{"Time", "Status", "X", "W"}
 	data1 := statmodel.NewDataset(da1, varnames, "Time", []string{"X"})
 
 	// "Unrolled" version of data1.
 	da2 := [][]statmodel.Dtype{
-		[]statmodel.Dtype{1, 1, 1, 2, 3, 3, 3, 4, 4},
-		[]statmodel.Dtype{1, 1, 1, 0, 0, 0, 1, 0, 0},
-		[]statmodel.Dtype{4, 2, 2, 5, 6, 6, 6, 5, 5},
-		[]statmodel.Dtype{1, 1, 1, 1, 1, 1, 1, 1, 1},
+		{1, 1, 1, 2, 3, 3, 3, 4, 4},
+		{1, 1, 1, 0, 0, 0, 1, 0, 0},
+		{4, 2, 2, 5, 6, 6, 6, 5, 5},
+		{1, 1, 1, 1, 1, 1, 1, 1, 1},
 	}
 	data2 := statmodel.NewDataset(da2, varnames, "Time", []string{"X"})
 

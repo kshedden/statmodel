@@ -17,7 +17,7 @@ func TestKO1(t *testing.T) {
 	x4 := []float64{1, 0, 3, 2, 5, 2, 4} // Don't knockoff this one
 
 	da := dstream.NewFromArrays(
-		[][]interface{}{[]interface{}{x1}, []interface{}{x2}, []interface{}{x3}, []interface{}{x4}},
+		[][]interface{}{{x1}, {x2}, {x3}, {x4}},
 		[]string{"x1", "x2", "x3", "x4"})
 
 	ko, err := NewKnockoff(da, []string{"x1", "x2", "x3"})

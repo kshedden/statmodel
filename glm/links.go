@@ -32,8 +32,8 @@ type Link struct {
 // LinkType is used to specify a GLM link function.
 type LinkType uint8
 
+// LogLink, ... are used to specify GLM link functions.
 const (
-	// Link function types
 	LogLink LinkType = iota
 	IdentityLink
 	LogitLink

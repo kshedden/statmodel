@@ -331,7 +331,7 @@ func (nb *NegBinomProfiler) LogLike(disp float64) float64 {
 	return result.LogLike()
 }
 
-// MLE returns the maximum likelihood estimate of the dispersion parameter.
+// DispersionMLE returns the maximum likelihood estimate of the dispersion parameter.
 func (nb *NegBinomProfiler) DispersionMLE() float64 {
 	return nb.dispersionMLE
 }

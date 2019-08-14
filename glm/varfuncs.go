@@ -8,6 +8,7 @@ import (
 // VarianceType is used to specify a GLM variance function.
 type VarianceType uint8
 
+// BinomialVar, ... define variance functions for a GLM.
 const (
 	BinomialVar VarianceType = iota
 	IdentityVar
