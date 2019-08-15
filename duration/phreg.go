@@ -67,7 +67,7 @@ type PHReg struct {
 	weightpos int
 
 	// Name and position of a stratum variable
-	stratumpos int
+	stratapos int
 
 	// Start and end position of the strata
 	stratumix [][2]int
@@ -141,11 +141,6 @@ type PHRegConfig struct {
 	// A logger to which logging information is wreitten
 	Log *log.Logger
 
-	// FitMethod is the numerical approach for fitting the model.  Allowed
-	// values include IRLS, gradient, and coordinate.
-	// TODO relevant?
-	FitMethod string
-
 	// Start contains starting values for the regression parameter estimates
 	Start []float64
 
@@ -156,8 +151,8 @@ type PHRegConfig struct {
 	// OffsetVar is the name of a variable that defines an offset.
 	OffsetVar string
 
-	// StratumVar is the name of a variable that defines strata.
-	StratumVar string
+	// StrataVar is the name of a variable that defines strata.
+	StrataVar string
 
 	// EntryVar is the name of a variable that defines entry (left truncation) times.
 	EntryVar string
@@ -165,8 +160,10 @@ type PHRegConfig struct {
 	L1Penalty map[string]float64
 	L2Penalty map[string]float64
 
+	// OptMethod is the Gonum optimization used to fit the model.
 	OptMethod optimize.Method
 
+	// OptSettings configures the Gonum optimization routine.
 	OptSettings *optimize.Settings
 }
 
@@ -237,7 +234,7 @@ func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg
 	}
 
 	weightpos := getpos(config.WeightVar)
-	stratumpos := getpos(config.StratumVar)
+	stratapos := getpos(config.StrataVar)
 	offsetpos := getpos(config.OffsetVar)
 	entrypos := getpos(config.EntryVar)
 
@@ -263,7 +260,7 @@ func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg
 		weightpos:   weightpos,
 		offsetpos:   offsetpos,
 		entrypos:    entrypos,
-		stratumpos:  stratumpos,
+		stratapos:   stratapos,
 		start:       config.Start,
 		l1wgt:       penToSlice(config.L1Penalty),
 		l2wgt:       penToSlice(config.L2Penalty),
@@ -308,12 +305,12 @@ func (ph *PHReg) sortByStratum() {
 	time := ph.data[ph.timepos]
 	nobs := len(time)
 
-	if ph.stratumpos == -1 {
+	if ph.stratapos == -1 {
 		ph.stratumix = [][2]int{{0, nobs}}
 		return
 	}
 
-	strata := ph.data[ph.stratumpos]
+	strata := ph.data[ph.stratapos]
 
 	inds := make([]int, nobs)
 	for i := range inds {
@@ -1106,18 +1103,22 @@ func (model *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.
 		model.varnames[model.statuspos],
 		model.varnames[model.xpos[pos]],
 	}
+
 	fmodel.data = [][]statmodel.Dtype{
 		model.data[model.timepos],
 		model.data[model.statuspos],
 		model.data[model.xpos[pos]],
 	}
+
 	fmodel.timepos = 0
 	fmodel.statuspos = 1
 	fmodel.xpos = []int{2}
-	fmodel.start = nil // TODO
+	fmodel.start = []float64{coeff[pos]}
+	fmodel.log = model.log
+
+	// These are not used for coordinate optimization
 	fmodel.optsettings = nil
 	fmodel.optmethod = nil
-	fmodel.log = model.log
 
 	add := func(pos int) int {
 		if pos == -1 {
@@ -1130,7 +1131,7 @@ func (model *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.
 
 	fmodel.weightpos = add(model.weightpos)
 	fmodel.entrypos = add(model.entrypos)
-	fmodel.stratumpos = add(model.stratumpos)
+	fmodel.stratapos = add(model.stratapos)
 
 	// Allocate a new slice for the offset
 	nobs := model.NumObs()

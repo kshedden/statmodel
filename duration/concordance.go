@@ -94,7 +94,7 @@ func (c *Concordance) Done() *Concordance {
 	return c
 }
 
-// Concordance returns the concordace statistic, using the given truncation
+// Concordance returns the concordance statistic, using the given truncation
 // parameter.
 func (c *Concordance) Concordance(trunc float64) float64 {
 

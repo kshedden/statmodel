@@ -147,7 +147,7 @@ func TestStratified1(t *testing.T) {
 
 	config := DefaultPHRegConfig()
 	config.EntryVar = "Entry"
-	config.StratumVar = "Stratum"
+	config.StrataVar = "Stratum"
 
 	da := data2()
 	ph := NewPHReg(da, "Status", config)
@@ -272,7 +272,7 @@ func TestStratified2(t *testing.T) {
 	data := statmodel.NewDataset(da, varnames, "time", xnames)
 
 	c := DefaultPHRegConfig()
-	c.StratumVar = "stratum"
+	c.StrataVar = "stratum"
 
 	ph := NewPHReg(data, "status", c)
 	result, err := ph.Fit()
@@ -329,13 +329,13 @@ func TestPhregOptMethods(t *testing.T) {
 		new(optimize.BFGS),
 		new(optimize.LBFGS),
 		new(optimize.CG),
-		//new(optimize.Newton), TODO
+		//new(optimize.Newton), //TODO
 		new(optimize.GradientDescent),
 		new(optimize.NelderMead),
 	} {
 		c := DefaultPHRegConfig()
 		c.OptMethod = m
-		c.StratumVar = "stratum"
+		c.StrataVar = "stratum"
 		ph := NewPHReg(data, "status", c)
 		result, err := ph.Fit()
 		if err != nil {
