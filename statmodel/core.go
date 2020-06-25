@@ -36,6 +36,24 @@ type Dataset interface {
 	Xnames() []string
 }
 
+type Columnser interface {
+	Names() []string
+	Data() [][]Dtype
+}
+
+func FromColumns(c Columnser, yname string, xnames []string) Dataset {
+
+	na := c.Names()
+	da := c.Data()
+
+	return &basicData{
+		data:     da,
+		yname:    yname,
+		varnames: na,
+		xnames:   xnames,
+	}
+}
+
 // basicData is a simple default implementation of the Dataset interface.
 type basicData struct {
 	data     [][]Dtype

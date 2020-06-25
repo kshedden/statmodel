@@ -104,6 +104,9 @@ type PHReg struct {
 	// If skip[i] is true, case i is skipped since it is censored before the first event.
 	skip []bool
 
+	// The number of cases that are skipped because they are censored before the first event
+	skipEarlyCensor int
+
 	// Optimization settings
 	optsettings *optimize.Settings
 
@@ -354,7 +357,7 @@ func (ph *PHReg) sortByStratum() {
 
 func (ph *PHReg) setupTimes() {
 
-	nskip := 0
+	ph.skipEarlyCensor = 0
 
 	time := ph.data[ph.timepos]
 	status := ph.data[ph.statuspos]
@@ -423,7 +426,7 @@ func (ph *PHReg) setupTimes() {
 				} else if ii == 0 {
 					// Censored before first event, never enters
 					ph.skip[i] = true
-					nskip++
+					ph.skipEarlyCensor++
 				} else {
 					// Censored between event times
 					exit[ii-1] = append(exit[ii-1], i)
@@ -473,10 +476,6 @@ func (ph *PHReg) setupTimes() {
 				}
 			}
 		}
-	}
-
-	if nskip > 0 {
-		fmt.Printf("%d observations dropped for being censored before the first event\n", nskip)
 	}
 }
 
@@ -1333,6 +1332,11 @@ func (phs *PHSummary) String() string {
 
 	if pe > 0 {
 		msg := fmt.Sprintf("%d observations have positive entry times", pe)
+		sum.Msg = append(sum.Msg, msg)
+	}
+
+	if ph.skipEarlyCensor > 0 {
+		msg := fmt.Sprintf("%d observations dropped for being censored before the first event\n", ph.skipEarlyCensor)
 		sum.Msg = append(sum.Msg, msg)
 	}
 

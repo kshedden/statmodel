@@ -276,7 +276,8 @@ func (ko *Knockoff) setrcmat() error {
 	if !es.Factorize(am, true) {
 		return fmt.Errorf("EigenSym!\n")
 	}
-	lmat := es.VectorsTo(nil)
+	lmat := new(mat.Dense)
+	es.VectorsTo(lmat)
 	va := es.Values(nil)
 	// Clip small negative eigenvalues
 	for j := range va {
@@ -394,7 +395,8 @@ func (ko *Knockoff) orthog(ma *mat.Dense) *mat.Dense {
 	if !sv.Factorize(ma, mat.SVDThin) {
 		panic("SVD!\n")
 	}
-	maq := sv.UTo(nil)
+	maq := new(mat.Dense)
+	sv.UTo(maq)
 
 	// Start with a matrix of random values
 	mr := mat.NewDense(n, p-1, nil)
@@ -418,7 +420,8 @@ func (ko *Knockoff) orthog(ma *mat.Dense) *mat.Dense {
 	if !sv.Factorize(md, mat.SVDThin) {
 		panic("SVD!\n")
 	}
-	u := sv.UTo(nil)
+	u := new(mat.Dense)
+	sv.UTo(u)
 
 	f := math.Sqrt(float64(ko.nobs[ko.chunk]) / float64(ko.ntot))
 	u.Scale(f, u)

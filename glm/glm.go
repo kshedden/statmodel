@@ -176,8 +176,8 @@ func (rslt *GLMResults) Scale() float64 {
 	return rslt.scale
 }
 
-// GLMConfig defines configuration parameters for a GLM.
-type GLMConfig struct {
+// Config defines configuration parameters for a GLM.
+type Config struct {
 
 	// A logger to which logging information is wreitten
 	Log *log.Logger
@@ -221,9 +221,9 @@ type GLMConfig struct {
 }
 
 // DefaultConfig returns default configuration values for a GLM.
-func DefaultConfig() *GLMConfig {
+func DefaultConfig() *Config {
 
-	return &GLMConfig{
+	return &Config{
 		Family:         NewFamily(GaussianFamily),
 		FitMethod:      "IRLS",
 		ConcurrentIRLS: 1000,
@@ -232,7 +232,7 @@ func DefaultConfig() *GLMConfig {
 
 // NewGLM creates a new GLM object for the given family, using its
 // default link and variance functions.
-func NewGLM(data statmodel.Dataset, config *GLMConfig) *GLM {
+func NewGLM(data statmodel.Dataset, config *Config) *GLM {
 
 	if config == nil {
 		config = DefaultConfig()

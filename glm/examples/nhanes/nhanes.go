@@ -29,62 +29,81 @@ package main
 
 import (
 	"compress/gzip"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
 	"os"
+	"strconv"
 
-	"github.com/kshedden/dstream/dstream"
-	"github.com/kshedden/dstream/formula"
+	"github.com/kshedden/formula"
 	"github.com/kshedden/statmodel/glm"
 	"github.com/kshedden/statmodel/statmodel"
 )
 
-func getData() dstream.Dstream {
+var (
+	source formula.DataSource
+)
+
+func toString(x []float64) []string {
+	y := make([]string, len(x))
+	for i, v := range x {
+		y[i] = fmt.Sprintf("%.0f", v)
+	}
+	return y
+}
+
+func init() {
 
 	fid, err := os.Open("nhanes.csv.gz")
 	if err != nil {
 		panic(err)
 	}
 	defer fid.Close()
+
 	gid, err := gzip.NewReader(fid)
 	if err != nil {
 		panic(err)
 	}
 	defer gid.Close()
 
-	types := []dstream.VarType{
-		{"RIAGENDR", dstream.Float64},
-		{"RIDAGEYR", dstream.Float64},
-		{"BPXSY1", dstream.Float64},
-		{"RIDRETH1", dstream.String},
+	rdr := csv.NewReader(gid)
+
+	names, err := rdr.Read()
+	if err != nil {
+		panic(err)
 	}
 
-	dst := dstream.FromCSV(gid).SetTypes(types).ChunkSize(100).HasHeader().Done()
-	dsc := dstream.MemCopy(dst, false)
+	data := make([][]float64, len(names))
+	for {
+		row, err := rdr.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
+		}
 
-	return dsc
-}
-
-func getDataset(ds dstream.Dstream, yname string) statmodel.Dataset {
-
-	varnames := ds.Names()
-	var xnames []string
-	for _, v := range varnames {
-		if v != yname {
-			xnames = append(xnames, v)
+		for j, x := range row {
+			y, err := strconv.ParseFloat(x, 64)
+			if err != nil {
+				y = math.NaN()
+			}
+			data[j] = append(data[j], y)
 		}
 	}
 
-	da := make([][]float64, ds.NumVar())
-	ds.Reset()
-	for ds.Next() {
-		for j := 0; j < ds.NumVar(); j++ {
-			da[j] = append(da[j], ds.GetPos(j).([]float64)...)
+	tostring := map[string]bool{"RIDRETH1": true}
+
+	var datax []interface{}
+	for j, x := range data {
+		if tostring[names[j]] {
+			datax = append(datax, toString(x))
+		} else {
+			datax = append(datax, x)
 		}
 	}
 
-	return statmodel.NewDataset(da, varnames, yname, xnames)
-
+	source = formula.NewSource(names, datax)
 }
 
 func model1() {
@@ -95,19 +114,24 @@ using two predictor variables: gender (RIAGENDR) and age (RIDAGEYR).
 Gender is treated as a quantitative variable and is coded as 1 for
 males and 2 for females.
 `
+	fml := []string{"BPXSY1", "1 + RIAGENDR + RIDAGEYR"}
 
-	dp := getData()
+	f, err := formula.NewMulti(fml, source, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	fml := "1 + RIAGENDR + RIDAGEYR"
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	f1 := formula.New(fml, dp).Keep("BPXSY1").Done()
-	f2 := dstream.MemCopy(f1, false)
-	f3 := dstream.DropNA(f2)
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
+	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	da := getDataset(f3, "BPXSY1")
-
-	glm := glm.NewGLM(da, nil)
-	rslt := glm.Fit()
+	model := glm.NewGLM(ds, nil)
+	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
 	fmt.Printf(rslt.Summary().String() + "\n\n")
@@ -121,19 +145,24 @@ including ethnicity as a categorical covariate, using level 5 (other
 race/multiracial) as the reference category.
 `
 
-	dp := getData()
+	fml := []string{"BPXSY1", "1 + RIAGENDR + RIDAGEYR + RIDRETH1"}
 
-	fml := "1 + RIAGENDR + RIDAGEYR + RIDRETH1"
-	reflev := map[string]string{"RIDRETH1": "5.0"}
+	f, err := formula.NewMulti(fml, source, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	f1 := formula.New(fml, dp).RefLevels(reflev).Keep("BPXSY1").Done()
-	f2 := dstream.MemCopy(f1, false)
-	f2 = dstream.DropNA(f2)
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	da := getDataset(f2, "BPXSY1")
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
+	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	glm := glm.NewGLM(da, nil)
-	rslt := glm.Fit()
+	model := glm.NewGLM(ds, nil)
+	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
 	fmt.Printf(rslt.Summary().String() + "\n\n")
@@ -148,19 +177,25 @@ and age as covariates.  Ethnicity is a categorical covariate with level
 5 (other race/multiracial) as the reference category.
 `
 
-	dp := getData()
+	fml := []string{"BPXSY1", "1 + RIAGENDR + RIDAGEYR + RIDRETH1 + RIAGENDR * RIDAGEYR"}
 
-	fml := "1 + RIAGENDR + RIDAGEYR + RIDRETH1 + RIAGENDR * RIDAGEYR"
-	reflev := map[string]string{"RIDRETH1": "5.0"}
+	f, err := formula.NewMulti(fml, source, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	f1 := formula.New(fml, dp).RefLevels(reflev).Keep("BPXSY1").Done()
-	f2 := dstream.MemCopy(f1, false)
-	f2 = dstream.DropNA(f2)
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	da := getDataset(f2, "BPXSY1")
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]",
+		"RIAGENDR:RIDAGEYR"}
+	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	glm := glm.NewGLM(da, nil)
-	rslt := glm.Fit()
+	model := glm.NewGLM(ds, nil)
+	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
 	fmt.Printf(rslt.Summary().String() + "\n\n")
@@ -174,30 +209,33 @@ blood pressure, using equal penalty weights for all covariates and
 zero penalty for the intercept.
 `
 
-	dp := getData()
+	fml := []string{"BPXSY1", "1 + RIAGENDR + RIDAGEYR + RIDRETH1"}
 
-	fml := "1 + RIAGENDR + RIDAGEYR + RIDRETH1"
-	reflev := map[string]string{"RIDRETH1": "5.0"}
+	f, err := formula.NewMulti(fml, source, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	f1 := formula.New(fml, dp).Keep("BPXSY1").RefLevels(reflev).Done()
-	f1 = dstream.DropNA(f1)
-	f2 := dstream.MemCopy(f1, false)
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	da := getDataset(f2, "BPXSY1")
-
-	c := glm.DefaultConfig()
-
-	wt := 0.01
 	l1pen := make(map[string]float64)
-	for _, v := range f2.Names() {
+	for _, v := range da.Names() {
 		if v != "icept" {
-			l1pen[v] = wt
+			l1pen[v] = 0.01
 		}
 	}
-	c.L1Penalty = l1pen
+	conf := glm.DefaultConfig()
+	conf.L1Penalty = l1pen
 
-	glm := glm.NewGLM(da, c)
-	rslt := glm.Fit()
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
+	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
+
+	model := glm.NewGLM(ds, conf)
+	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
 	fmt.Printf(rslt.Summary().String() + "\n\n")
@@ -210,10 +248,7 @@ Linear regression with systolic blood pressure as the outcome,
 using a square root transform in the formula.
 `
 
-	dp := getData()
-
-	fml := "1 + RIAGENDR + sqrt(RIDAGEYR) + RIDRETH1"
-	reflev := map[string]string{"RIDRETH1": "5.0"}
+	fml := []string{"BPXSY1", "1 + RIAGENDR + sqrt(RIDAGEYR) + RIDRETH1"}
 
 	funcs := make(map[string]formula.Func)
 	funcs["sqrt"] = func(na string, x []float64) *formula.ColSet {
@@ -221,36 +256,41 @@ using a square root transform in the formula.
 		for i, v := range x {
 			y[i] = v * v
 		}
-		return &formula.ColSet{
-			Names: []string{na},
-			Data:  []interface{}{y},
-		}
+		return formula.NewColSet([]string{na}, [][]float64{y})
 	}
 
-	f1 := formula.New(fml, dp).Keep("BPXSY1").RefLevels(reflev).Funcs(funcs).Done()
-	f2 := dstream.MemCopy(f1, false)
-	f2 = dstream.DropNA(f2)
+	conf := &formula.Config{Funcs: funcs}
+	f, err := formula.NewMulti(fml, source, conf)
+	if err != nil {
+		panic(err)
+	}
 
-	da := getDataset(f2, "BPXSY1")
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	glm := glm.NewGLM(da, nil)
-	rslt := glm.Fit()
+	xnames := []string{"icept", "RIAGENDR", "sqrt(RIDAGEYR)", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
+	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
+
+	model := glm.NewGLM(ds, nil)
+	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
 	fmt.Printf(rslt.Summary().String() + "\n\n")
 }
 
-// Create a binary indicator of high systolic blood pressure.
-func hbp(v map[string]interface{}, x interface{}) {
-	z := x.([]float64)
-	bp := v["BPXSY1"].([]float64)
-	for i := range bp {
-		if bp[i] >= 130 {
-			z[i] = 1
-		} else {
-			z[i] = 0
+// binfunc dichotomizes blood pressure to 1 (>= 130) and
+// 0 (< 130).
+func binfunc(na string, x []float64) *formula.ColSet {
+	y := make([]float64, len(x))
+	for i, v := range x {
+		if v >= 130 {
+			y[i] = 1
 		}
 	}
+	return formula.NewColSet([]string{na}, [][]float64{y})
 }
 
 func model6() {
@@ -260,23 +300,30 @@ Logistic regression using high blood pressure status (binary) as
 the dependent variable, and gender and age as predictors.
 `
 
-	dp := getData()
+	funcs := make(map[string]formula.Func)
+	funcs["bin"] = binfunc
 
-	dp = dstream.Generate(dp, "BP", hbp, dstream.Float64)
-	dp = dstream.MemCopy(dp, false)
+	fml := []string{"bin(BPXSY1)", "1 + RIAGENDR + RIDAGEYR"}
 
-	fml := "1 + RIAGENDR + RIDAGEYR"
+	conf := &formula.Config{Funcs: funcs}
+	f, err := formula.NewMulti(fml, source, conf)
+	if err != nil {
+		panic(err)
+	}
 
-	f1 := formula.New(fml, dp).Keep("BP").Done()
-	f2 := dstream.MemCopy(f1, false)
-	f3 := dstream.DropNA(f2)
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	da := getDataset(f3, "BP")
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
+	ds := statmodel.FromColumns(da, "bin(BPXSY1)", xnames)
 
 	c := glm.DefaultConfig()
 	c.Family = glm.NewFamily(glm.BinomialFamily)
-	glm := glm.NewGLM(da, c)
-	rslt := glm.Fit()
+	model := glm.NewGLM(ds, c)
+	rslt := model.Fit()
 
 	smry := rslt.Summary()
 	fmt.Printf(msg + "\n")
@@ -295,26 +342,33 @@ status, with L1 and L2 penalties.  Age and gender are the predictor
 variables.
 `
 
-	dp := getData()
+	funcs := make(map[string]formula.Func)
+	funcs["bin"] = binfunc
 
-	dp = dstream.Generate(dp, "BP", hbp, dstream.Float64)
-	dp = dstream.MemCopy(dp, false)
+	fml := []string{"bin(BPXSY1)", "1 + RIAGENDR + RIDAGEYR"}
 
-	fml := "1 + RIAGENDR + RIDAGEYR"
+	conf := &formula.Config{Funcs: funcs}
+	f, err := formula.NewMulti(fml, source, conf)
+	if err != nil {
+		panic(err)
+	}
 
-	f1 := formula.New(fml, dp).Keep("BP").Done()
-	f2 := dstream.MemCopy(f1, false)
-	f3 := dstream.DropNA(f2)
+	da, err := f.Parse()
+	if err != nil {
+		panic(err)
+	}
+	da = da.DropNA()
 
-	da := getDataset(f3, "BP")
+	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
+	ds := statmodel.FromColumns(da, "bin(BPXSY1)", xnames)
 
 	c := glm.DefaultConfig()
 	c.Family = glm.NewFamily(glm.BinomialFamily)
 	c.L1Penalty = map[string]float64{"RIAGENDR": 1}
 	c.L2Penalty = map[string]float64{"RIAGENDR": 0.01, "RIDAGEYR": 0.01}
 
-	glm := glm.NewGLM(da, c)
-	rslt := glm.Fit()
+	model := glm.NewGLM(ds, c)
+	rslt := model.Fit()
 	smry := rslt.Summary()
 
 	fmt.Printf(msg + "\n")
