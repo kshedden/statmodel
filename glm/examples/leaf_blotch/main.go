@@ -72,7 +72,7 @@ var (
 )
 
 // setup builds a dataset from the raw data.
-func setup() statmodel.Dataset {
+func setup() (statmodel.Dataset, []string) {
 
 	rdr := bytes.NewReader([]byte(raw))
 	rdc := csv.NewReader(rdr)
@@ -143,7 +143,7 @@ func setup() statmodel.Dataset {
 
 	xnames := varnames[1:]
 
-	return statmodel.NewDataset(da, varnames, "y", xnames)
+	return statmodel.NewDataset(da, varnames), xnames
 }
 
 func residPlot(lp, resid []float64, title, filename string) {
@@ -176,18 +176,19 @@ func residPlot(lp, resid []float64, title, filename string) {
 
 func main() {
 
-	data := setup()
-
-	fmt.Printf("%+v\n", data)
+	data, xnames := setup()
 
 	// Initial model, the scale parameter estimate is around 0.09.
 	c := glm.DefaultConfig()
 	c.Family = glm.NewFamily(glm.BinomialFamily)
 	c.DispersionForm = glm.DispersionFree
-	model := glm.NewGLM(data, c)
+	model, err := glm.NewGLM(data, "y", xnames, c)
+	if err != nil {
+		panic(err)
+	}
 	result := model.Fit()
 
-	fmt.Printf("%vf\n", result.Summary())
+	fmt.Printf("%v\n", result.Summary())
 
 	residPlot(result.LinearPredictor(nil), result.PearsonResid(nil),
 		"Default variance", "defvar.pdf")
@@ -198,7 +199,10 @@ func main() {
 	c.Family = glm.NewFamily(glm.BinomialFamily)
 	c.DispersionForm = glm.DispersionFree
 	c.VarFunc = squaredbinom
-	model = glm.NewGLM(data, c)
+	model, err = glm.NewGLM(data, "y", xnames, c)
+	if err != nil {
+		panic(err)
+	}
 	result = model.Fit()
 
 	residPlot(result.LinearPredictor(nil), result.PearsonResid(nil),

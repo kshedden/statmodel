@@ -14,69 +14,34 @@ import (
 // passed to the statistical models.  It should be set to float64 or float32.
 type Dtype = float64
 
-// Dataset defines a way to pass data to a statistical model.  A Dataset consists
-// of one or more variables, each of which may be the response, a predictor, or some
-// other variable in a statistical model (e.g. a weight or stratifying variable).
-// Data()[k] is the k^th variable in the dataset, and the name of this variable is
-// Varnames()[k].  Yname() and Xnames() return variables that are the dependent
-// variable and independent variables in a regression model, respectively.
+// Dataset defines a way to pass data to a statistical model.
 type Dataset interface {
 
 	// Data returns all variables in the dataset, stored column-wise.
 	Data() [][]Dtype
 
-	// Varnames returns the names of the variables in the regression model,
-	// in the same order as the data are returned by Data.
-	Varnames() []string
-
-	// Yname returns the name of the dependent variable in a regression model.
-	Yname() string
-
-	// Xnames returns the names of the independent variables in a regression model.
-	Xnames() []string
-}
-
-type Columnser interface {
+	// Names returns the names of the variables in the dataset,
+	// in the same order as the data are stored in the Data field.
 	Names() []string
-	Data() [][]Dtype
-}
-
-func FromColumns(c Columnser, yname string, xnames []string) Dataset {
-
-	na := c.Names()
-	da := c.Data()
-
-	return &basicData{
-		data:     da,
-		yname:    yname,
-		varnames: na,
-		xnames:   xnames,
-	}
 }
 
 // basicData is a simple default implementation of the Dataset interface.
 type basicData struct {
-	data     [][]Dtype
-	yname    string
-	varnames []string
-	xnames   []string
+	data  [][]Dtype
+	names []string
 }
 
-// NewDataset returns a dataset containing the given data columns.  varnames contains the names
-// of the variables in the same order as the appear in data.  yname and xnames are names
-// of the dependent and independent variables, respectively.
-func NewDataset(data [][]Dtype, varnames []string, yname string, xnames []string) Dataset {
+// NewDataset returns a dataset containing the given data columns.
+func NewDataset(data [][]Dtype, names []string) Dataset {
 
-	if len(data) != len(varnames) {
-		msg := fmt.Sprintf("len(data)=%d and len(varnames)=%d are not compatible\n", len(data), len(varnames))
+	if len(data) != len(names) {
+		msg := fmt.Sprintf("len(data)=%d and len(names)=%d are not compatible\n", len(data), len(names))
 		panic(msg)
 	}
 
 	return &basicData{
-		data:     data,
-		varnames: varnames,
-		yname:    yname,
-		xnames:   xnames,
+		data:  data,
+		names: names,
 	}
 }
 
@@ -84,16 +49,8 @@ func (bd *basicData) Data() [][]Dtype {
 	return bd.data
 }
 
-func (bd *basicData) Yname() string {
-	return bd.yname
-}
-
-func (bd *basicData) Varnames() []string {
-	return bd.varnames
-}
-
-func (bd *basicData) Xnames() []string {
-	return bd.xnames
+func (bd *basicData) Names() []string {
+	return bd.names
 }
 
 // HessType indicates the type of a Hessian matrix for a log-likelihood.

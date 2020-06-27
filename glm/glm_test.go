@@ -18,97 +18,67 @@ func scalarClose(x, y, eps float64) bool {
 	return math.Abs(x-y) <= eps
 }
 
-func data1(wgt bool) statmodel.Dataset {
+func data1() statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
 	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
-	data := [][]statmodel.Dtype{y, x1, x2}
-	varnames := []string{"y", "x1", "x2"}
-	xnames := []string{"x1", "x2"}
+	w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
+	data := [][]statmodel.Dtype{y, x1, x2, w}
+	names := []string{"y", "x1", "x2", "w"}
 
-	if wgt {
-		w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
-		data = append(data, w)
-		varnames = append(varnames, "w")
-	}
-
-	return statmodel.NewDataset(data, varnames, "y", xnames)
+	return statmodel.NewDataset(data, names)
 }
 
-func data2(wgt bool) statmodel.Dataset {
+func data2() statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 0, 1, 0, 1, 0, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
 	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
 	x3 := []statmodel.Dtype{1, -1, 1, 1, 2, 5, -1}
-	data := [][]statmodel.Dtype{y, x1, x2, x3}
-	varnames := []string{"y", "x1", "x2", "x3"}
-	xnames := []string{"x1", "x2", "x3"}
+	w := []statmodel.Dtype{2, 1, 3, 3, 4, 2, 3}
+	data := [][]statmodel.Dtype{y, x1, x2, x3, w}
+	names := []string{"y", "x1", "x2", "x3", "w"}
 
-	if wgt {
-		w := []statmodel.Dtype{2, 1, 3, 3, 4, 2, 3}
-		data = append(data, w)
-		varnames = append(varnames, "w")
-	}
-
-	return statmodel.NewDataset(data, varnames, "y", xnames)
+	return statmodel.NewDataset(data, names)
 }
 
-func data3(wgt bool) statmodel.Dataset {
+func data3() statmodel.Dataset {
 
 	y := []statmodel.Dtype{1, 1, 1, 0, 0, 0, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
 	x2 := []statmodel.Dtype{0, 1, 0, 0, -1, 0, 1}
-	data := [][]statmodel.Dtype{y, x1, x2}
-	varnames := []string{"y", "x1", "x2"}
-	xnames := []string{"x1", "x2"}
+	w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
+	data := [][]statmodel.Dtype{y, x1, x2, w}
+	names := []string{"y", "x1", "x2", "w"}
 
-	if wgt {
-		w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
-		data = append(data, w)
-		varnames = append(varnames, "w")
-	}
-
-	return statmodel.NewDataset(data, varnames, "y", xnames)
+	return statmodel.NewDataset(data, names)
 }
 
-func data4(wgt bool) statmodel.Dataset {
+func data4() statmodel.Dataset {
 
 	y := []statmodel.Dtype{3, 1, 5, 4, 2, 3, 6}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
 	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
 	x3 := []statmodel.Dtype{1, -1, 1, 1, 2, 5, -1}
-	data := [][]statmodel.Dtype{y, x1, x2, x3}
-	varnames := []string{"y", "x1", "x2", "x3"}
-	xnames := []string{"x1", "x2", "x3"}
+	w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
+	data := [][]statmodel.Dtype{y, x1, x2, x3, w}
+	names := []string{"y", "x1", "x2", "x3", "w"}
 
-	if wgt {
-		w := []statmodel.Dtype{3, 3, 2, 3, 1, 3, 2}
-		data = append(data, w)
-		varnames = append(varnames, "w")
-	}
-
-	return statmodel.NewDataset(data, varnames, "y", xnames)
+	return statmodel.NewDataset(data, names)
 }
 
-func data5(wgt bool) statmodel.Dataset {
+func data5() statmodel.Dataset {
 
 	y := []statmodel.Dtype{0, 1, 3, 2, 1, 1, 0}
 	x1 := []statmodel.Dtype{1, 1, 1, 1, 1, 1, 1}
 	x2 := []statmodel.Dtype{4, 1, -1, 3, 5, -5, 3}
 	off := []statmodel.Dtype{0, 0, 1, 1, 0, 0, 0}
-	data := [][]statmodel.Dtype{y, x1, x2, off}
-	varnames := []string{"y", "x1", "x2", "off"}
-	xnames := []string{"x1", "x2"}
+	w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
+	data := [][]statmodel.Dtype{y, x1, x2, off, w}
+	names := []string{"y", "x1", "x2", "off", "w"}
 
-	if wgt {
-		w := []statmodel.Dtype{1, 2, 2, 3, 1, 3, 2}
-		data = append(data, w)
-		varnames = append(varnames, "w")
-	}
-
-	return statmodel.NewDataset(data, varnames, "y", xnames)
+	return statmodel.NewDataset(data, names)
 }
 
 // A test problem
@@ -116,6 +86,7 @@ type testprob struct {
 	title      string
 	family     *Family
 	data       statmodel.Dataset
+	xnames     []string
 	weight     bool
 	offset     bool
 	start      []float64
@@ -139,7 +110,8 @@ var glmTests []testprob = []testprob{
 		title:      "Gaussian 1 weighted OLS",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
-		data:       data1(true),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{1.316285, -0.047555},
 		stderr:     []float64{0.277652, 0.080877},
@@ -152,7 +124,8 @@ var glmTests []testprob = []testprob{
 		title:  "Gaussian 2 weighted OLS",
 		family: NewFamily(GaussianFamily),
 		start:  nil,
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{0.191194, 0.046013, 0.090639},
 		stderr: []float64{0.199909, 0.044360, 0.082265},
@@ -167,7 +140,8 @@ var glmTests []testprob = []testprob{
 		title:      "Gaussian 3 weighted OLS",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
-		data:       data3(true),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{0.418605, 0.220930},
 		stderr:     []float64{0.13620, 0.22926},
@@ -180,7 +154,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 1 weighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data1(true),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{0.266817, -0.035637},
 		stderr:     []float64{0.236179, 0.067480},
@@ -193,7 +168,8 @@ var glmTests []testprob = []testprob{
 		title:  "Poisson 2 weighted MLE",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{-1.540684, 0.116108, 0.246615},
 		stderr: []float64{0.775912, 0.135982, 0.283345},
@@ -208,7 +184,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 3 weighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data3(true),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{-0.896361, 0.467334},
 		stderr:     []float64{0.428867, 0.647330},
@@ -221,7 +198,8 @@ var glmTests []testprob = []testprob{
 		title:  "Binomial 1 weighted MLE",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{-1.378328, 0.201911, 0.407917},
 		stderr: []float64{0.927975, 0.187708, 0.363425},
@@ -235,7 +213,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 2 weighted MLE",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data3(true),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{-0.343610, 0.934519},
 		stderr:     []float64{0.553523, 0.963054},
@@ -248,7 +227,8 @@ var glmTests []testprob = []testprob{
 		title:  "Binomial 3 unweighted MLE",
 		family: NewFamily(BinomialFamily),
 		start:  nil,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{-1.650145, 0.190136, 0.344331},
 		stderr: []float64{1.505798, 0.323601, 0.593428},
 		vcov: []float64{2.267429, -0.337163, -0.684836,
@@ -262,7 +242,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 4 unweighted MLE",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data3(false),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		params:     []float64{-0.434175, 0.868350},
 		stderr:     []float64{0.830041, 1.306904},
 		vcov:       []float64{0.688967, -0.330063, -0.330063, 1.707998},
@@ -274,7 +255,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 4 unweighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data1(false),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		params:     []float64{0.213361, -0.081530},
 		stderr:     []float64{0.357095, 0.100337},
 		vcov:       []float64{0.127517, -0.005034, -0.005034, 0.010067},
@@ -286,7 +268,8 @@ var glmTests []testprob = []testprob{
 		title:  "Poisson 5 unweighted MLE",
 		family: NewFamily(PoissonFamily),
 		start:  nil,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{-1.792499, 0.128696, 0.241203},
 		stderr: []float64{1.325076, 0.256408, 0.496363},
 		vcov: []float64{1.755827, -0.241115, -0.515732,
@@ -300,7 +283,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 6 unweighted MLE",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data3(false),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		params:     []float64{-0.962424, 0.481212},
 		stderr:     []float64{0.656431, 0.937078},
 		vcov:       []float64{0.430902, -0.292705, -0.292705, 0.878115},
@@ -312,7 +296,8 @@ var glmTests []testprob = []testprob{
 		title:      "Gaussian 4 unweighted MLE",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
-		data:       data1(false),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		params:     []float64{1.290837, -0.103586},
 		stderr:     []float64{0.456706, 0.130298},
 		vcov:       []float64{0.208581, -0.024254, -0.024254, 0.016978},
@@ -324,7 +309,8 @@ var glmTests []testprob = []testprob{
 		title:  "Gaussian 5",
 		family: NewFamily(GaussianFamily),
 		start:  nil,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{0.154198, 0.038670, 0.066739},
 		stderr: []float64{0.333030, 0.083695, 0.142159},
 		vcov: []float64{0.110909, -0.017874, -0.032931,
@@ -338,7 +324,8 @@ var glmTests []testprob = []testprob{
 		title:      "Gaussian 6",
 		family:     NewFamily(GaussianFamily),
 		start:      nil,
-		data:       data3(false),
+		data:       data3(),
+		xnames:     []string{"x1", "x2"},
 		params:     []float64{0.4, 0.2},
 		stderr:     []float64{0.219089, 0.334664},
 		vcov:       []float64{0.048, -0.016, -0.016, 0.112},
@@ -350,7 +337,8 @@ var glmTests []testprob = []testprob{
 		title:  "Inverse Gaussian 1",
 		family: NewFamily(InvGaussianFamily),
 		start:  []float64{0.1, 0, 0},
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{0.091657, -0.001893, -0.000376},
 		stderr: []float64{0.033456, 0.009052, 0.014820},
@@ -365,7 +353,8 @@ var glmTests []testprob = []testprob{
 		title:  "Gamma 1",
 		family: NewFamily(GammaFamily),
 		start:  []float64{0.3, 0.0, 0.0},
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{0.302721, -0.003171, -0.000705},
 		stderr: []float64{0.055975, 0.015255, 0.024878},
@@ -380,7 +369,8 @@ var glmTests []testprob = []testprob{
 		title:  "QuasiPoisson 1",
 		family: NewFamily(QuasiPoissonFamily),
 		start:  nil,
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{-1.540684, 0.116108, 0.246615},
 		stderr: []float64{0.684396089274111, 0.11994309040228321, 0.24992565563491265},
@@ -395,7 +385,8 @@ var glmTests []testprob = []testprob{
 		title:  "Negative binomial 1",
 		family: NewNegBinomFamily(1, NewLink(LogLink)),
 		start:  nil,
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{1.191131, 0.011851, 0.004809},
 		stderr: []float64{0.187331, 0.051733, 0.083739},
@@ -410,7 +401,8 @@ var glmTests []testprob = []testprob{
 		title:  "Negative binomial 2",
 		family: NewNegBinomFamily(1.5, NewLink(LogLink)),
 		start:  nil,
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: []float64{1.190715, 0.011981, 0.005043},
 		stderr: []float64{0.187342, 0.051768, 0.083768},
@@ -425,7 +417,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 7",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data5(true),
+		data:       data5(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		offset:     true,
 		params:     []float64{-0.183029, -0.075427},
@@ -439,7 +432,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 8",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data1(true),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		weight:     true,
 		params:     []float64{0.256717, -0.035340},
 		scale:      1.0,
@@ -450,7 +444,8 @@ var glmTests []testprob = []testprob{
 		title:      "Poisson 9",
 		family:     NewFamily(PoissonFamily),
 		start:      nil,
-		data:       data2(true),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     true,
 		params:     []float64{-0.921685, 0.032864, 0.064429},
 		scale:      1.0,
@@ -461,7 +456,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 6",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(true),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     true,
 		params:     []float64{-0.640768, 0.092631, 0.175485},
 		scale:      1.0,
@@ -472,7 +468,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 7",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(true),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     true,
 		params:     []float64{-0.659042, 0.097647, 0.187009},
 		scale:      1.0,
@@ -483,7 +480,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 8 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(false),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     false,
 		params:     []float64{-0.465363, 0, 0},
 		scale:      1.0,
@@ -494,7 +492,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 9 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(false),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     false,
 		params:     []float64{-0.737198, 0.024176, 0.017089},
 		scale:      1.0,
@@ -505,7 +504,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 10 L1-regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(false),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     false,
 		params:     []float64{-1.433479, 0.152795, 0.268036},
 		scale:      1.0,
@@ -516,7 +516,8 @@ var glmTests []testprob = []testprob{
 		title:      "Binomial 11 L1 and L2 regularized",
 		family:     NewFamily(BinomialFamily),
 		start:      nil,
-		data:       data2(false),
+		data:       data2(),
+		xnames:     []string{"x1", "x2", "x3"},
 		weight:     false,
 		params:     []float64{-0.988257, 0.078329, 0.121922},
 		scale:      1.0,
@@ -528,7 +529,8 @@ var glmTests []testprob = []testprob{
 		title:      "Tweedie 1",
 		family:     NewTweedieFamily(1.5, NewLink(LogLink)),
 		start:      nil,
-		data:       data1(false),
+		data:       data1(),
+		xnames:     []string{"x1", "x2"},
 		weight:     false,
 		params:     []float64{0.22297879, -0.09520094},
 		stderr:     []float64{0.3885426, 0.1102231},
@@ -543,7 +545,8 @@ var glmTests []testprob = []testprob{
 		title:  "Tweedie 2",
 		family: NewTweedieFamily(1.75, NewLink(LogLink)),
 		start:  nil,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: false,
 		params: []float64{-1.78192221, 0.05615625, 0.31635418},
 		stderr: []float64{1.3368212, 0.3106755, 0.5459943},
@@ -603,7 +606,10 @@ func TestFit(t *testing.T) {
 			defer lf.Close()
 			config.Log = log.New(lf, "", log.Lshortfile)
 
-			glm := NewGLM(ds.data, config)
+			glm, err := NewGLM(ds.data, "y", ds.xnames, config)
+			if err != nil {
+				panic(err)
+			}
 			result := glm.Fit()
 
 			if ds.paramstol == 0 {

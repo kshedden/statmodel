@@ -230,31 +230,47 @@ func DefaultConfig() *Config {
 	}
 }
 
+func checkValid(data statmodel.Dataset) error {
+
+	for k, na := range data.Names() {
+		if len(strings.TrimSpace(na)) == 0 {
+			msg := fmt.Sprintf("The variable in position %d has an invalid name.", k)
+			return fmt.Errorf(msg)
+		}
+	}
+
+	return nil
+}
+
 // NewGLM creates a new GLM object for the given family, using its
 // default link and variance functions.
-func NewGLM(data statmodel.Dataset, config *Config) *GLM {
+func NewGLM(data statmodel.Dataset, outcome string, predictors []string, config *Config) (*GLM, error) {
 
 	if config == nil {
 		config = DefaultConfig()
 	}
 
+	if err := checkValid(data); err != nil {
+		return nil, err
+	}
+
 	pos := make(map[string]int)
-	for i, v := range data.Varnames() {
+	for i, v := range data.Names() {
 		pos[v] = i
 	}
 
-	ypos, ok := pos[data.Yname()]
+	ypos, ok := pos[outcome]
 	if !ok {
-		msg := fmt.Sprintf("'%s' not found\n", data.Yname())
-		panic(msg)
+		msg := fmt.Sprintf("Outcome variable '%s' not found in dataset\n", outcome)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var xpos []int
-	for _, xna := range data.Xnames() {
+	for _, xna := range predictors {
 		xp, ok := pos[xna]
 		if !ok {
-			msg := fmt.Sprintf("'%s' not found\n", xna)
-			panic(msg)
+			msg := fmt.Sprintf("Predictor '%s' not found in dataset\n", xna)
+			return nil, fmt.Errorf(msg)
 		}
 		xpos = append(xpos, xp)
 	}
@@ -264,8 +280,8 @@ func NewGLM(data statmodel.Dataset, config *Config) *GLM {
 		var ok bool
 		weightpos, ok = pos[config.WeightVar]
 		if !ok {
-			msg := fmt.Sprintf("'%s' not found\n", config.WeightVar)
-			panic(msg)
+			msg := fmt.Sprintf("Weight variable '%s' not found in dataset\n", config.WeightVar)
+			return nil, fmt.Errorf(msg)
 		}
 	}
 
@@ -274,12 +290,12 @@ func NewGLM(data statmodel.Dataset, config *Config) *GLM {
 		var ok bool
 		offsetpos, ok = pos[config.OffsetVar]
 		if !ok {
-			msg := fmt.Sprintf("'%s' not found\n", config.OffsetVar)
-			panic(msg)
+			msg := fmt.Sprintf("Offset variable '%s' not found in dataset\n", config.OffsetVar)
+			return nil, fmt.Errorf(msg)
 		}
 	}
 
-	varnames := data.Varnames()
+	varnames := data.Names()
 
 	penToSlice := func(m map[string]float64) []float64 {
 		if m == nil || len(m) == 0 {
@@ -294,7 +310,7 @@ func NewGLM(data statmodel.Dataset, config *Config) *GLM {
 
 	model := &GLM{
 		data:             data.Data(),
-		varnames:         data.Varnames(),
+		varnames:         data.Names(),
 		ypos:             ypos,
 		xpos:             xpos,
 		weightpos:        weightpos,
@@ -315,7 +331,7 @@ func NewGLM(data statmodel.Dataset, config *Config) *GLM {
 
 	model.init()
 
-	return model
+	return model, nil
 }
 
 func (model *GLM) setup() {

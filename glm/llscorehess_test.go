@@ -13,6 +13,7 @@ type ptlsh struct {
 	family  *Family
 	link    *Link
 	data    statmodel.Dataset
+	xnames  []string
 	weight  bool
 	off     bool
 	params  []float64
@@ -27,7 +28,8 @@ var pq = []ptlsh{
 		title:   "Poisson unweighted 1",
 		family:  NewFamily(PoissonFamily),
 		weight:  false,
-		data:    data1(false),
+		data:    data1(),
+		xnames:  []string{"x1", "x2"},
 		params:  []float64{0, 0},
 		ll:      -9.48490664979,
 		score:   []float64{1, -6},
@@ -35,10 +37,12 @@ var pq = []ptlsh{
 		obshess: []float64{-7, -10, -10, -86},
 	},
 	{
-		title:   "Poisson unweighted 2",
-		family:  NewFamily(PoissonFamily),
-		weight:  false,
-		data:    data1(false),
+		title:  "Poisson unweighted 2",
+		family: NewFamily(PoissonFamily),
+		weight: false,
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
+
 		params:  []float64{1, 1},
 		ll:      -659.930531049,
 		score:   []float64{-661.4456244, -2940.68298198},
@@ -49,7 +53,8 @@ var pq = []ptlsh{
 		title:   "Binomial unweighted 1",
 		family:  NewFamily(BinomialFamily),
 		weight:  false,
-		data:    data2(false),
+		data:    data2(),
+		xnames:  []string{"x1", "x2", "x3"},
 		params:  []float64{0, 0, 0},
 		ll:      -4.85203026392,
 		score:   []float64{-1.5, -1, -1},
@@ -61,7 +66,8 @@ var pq = []ptlsh{
 		family: NewFamily(BinomialFamily),
 		link:   NewLink(LogLink),
 		weight: true,
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{-0.7, 0.1, 0},
 		ll:     -14.070884019230451,
 		score:  []float64{-12.99445525, -39.37101499, 2.18964978},
@@ -76,7 +82,8 @@ var pq = []ptlsh{
 		title:  "Binomial unweighted 1",
 		family: NewFamily(BinomialFamily),
 		weight: false,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{1, 0, 1},
 		ll:     -11.818141431,
 		score:  []float64{-3.59249274, -3.06001622, -5.53517637},
@@ -89,7 +96,8 @@ var pq = []ptlsh{
 		title:  "Binomial unweighted 1",
 		family: NewFamily(BinomialFamily),
 		weight: false,
-		data:   data2(false),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{0, -1, 2},
 		ll:     -16.8573417434,
 		score:  []float64{-0.66377831, 7.25672511, -3.82448106},
@@ -102,7 +110,8 @@ var pq = []ptlsh{
 		title:  "Gamma weighted 1",
 		family: NewFamily(GammaFamily),
 		weight: true,
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{0.1, 0.1, 0.1},
 		ll:     -43.463688316896253,
 		score:  []float64{41.91666667, -141.75, 81.83333333},
@@ -117,7 +126,8 @@ var pq = []ptlsh{
 		title:  "Inverse Gaussian weighted 1",
 		family: NewFamily(InvGaussianFamily),
 		weight: true,
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{0.1, 0.1, 0.1},
 		ll:     -46.917965084595942,
 		score:  []float64{-9.40831849, -32.75370535, -7.01395223},
@@ -132,7 +142,8 @@ var pq = []ptlsh{
 		title:  "Negative binomial 1",
 		family: NewNegBinomFamily(1.5, NewLink(LogLink)),
 		weight: true,
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: []float64{1, 0, -1},
 		ll:     -77.310157634140779,
 		score:  []float64{17.14149583, -23.34656954, 56.64897996},
@@ -147,7 +158,8 @@ var pq = []ptlsh{
 		title:  "Poisson unweighted 3",
 		family: NewFamily(PoissonFamily),
 		weight: true,
-		data:   data5(true),
+		data:   data5(),
+		xnames: []string{"x1", "x2"},
 		off:    true,
 		params: []float64{-1, 2},
 		ll:     -10716.200029495829,
@@ -179,7 +191,10 @@ func TestLLScoreHess(t *testing.T) {
 			config.OffsetVar = "off"
 		}
 
-		glm := NewGLM(ps.data, config)
+		glm, err := NewGLM(ps.data, "y", ps.xnames, config)
+		if err != nil {
+			panic(err)
+		}
 
 		m := glm.NumParams()
 		score := make([]float64, m)

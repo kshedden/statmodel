@@ -9,8 +9,9 @@
 //
 // https://wwwn.cdc.gov/Nchs/Nhanes/Search/DataPage.aspx?Component=Examination&CycleBeginYear=2011
 //
-// This script uses a merged dataset in csv format.  To obtain this dataset
-// run the following Python program:
+// This script uses a merged dataset in csv format.  Since Go doesn't seem to
+// currently have a reader for SAS XPT files, to obtain a csv version of
+// the NHANES dataset run the following Python program:
 //
 //  # Python script below, requires Pandas
 //  import pandas as pd
@@ -38,13 +39,15 @@ import (
 
 	"github.com/kshedden/formula"
 	"github.com/kshedden/statmodel/glm"
-	"github.com/kshedden/statmodel/statmodel"
 )
 
 var (
 	source formula.DataSource
 )
 
+// toString converts a float64 slice (containing whole numbers)
+// to a string slice.  For a variable to be treated as a categorical
+// variable by the GLM, it must be represented with strings.
 func toString(x []float64) []string {
 	y := make([]string, len(x))
 	for i, v := range x {
@@ -53,6 +56,7 @@ func toString(x []float64) []string {
 	return y
 }
 
+// init loads the NHANES data from a csv file.
 func init() {
 
 	fid, err := os.Open("nhanes.csv.gz")
@@ -92,6 +96,9 @@ func init() {
 		}
 	}
 
+	// These variables are converted to strings, so that
+	// they are treated as categorical variables in the models
+	// to be fit below.
 	tostring := map[string]bool{"RIDRETH1": true}
 
 	var datax []interface{}
@@ -128,9 +135,11 @@ males and 2 for females.
 	da = da.DropNA()
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
-	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	model := glm.NewGLM(ds, nil)
+	model, err := glm.NewGLM(da, "BPXSY1", xnames, nil)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -159,9 +168,11 @@ race/multiracial) as the reference category.
 	da = da.DropNA()
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
-	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	model := glm.NewGLM(ds, nil)
+	model, err := glm.NewGLM(da, "BPXSY1", xnames, nil)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -192,9 +203,11 @@ and age as covariates.  Ethnicity is a categorical covariate with level
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]",
 		"RIAGENDR:RIDAGEYR"}
-	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	model := glm.NewGLM(ds, nil)
+	model, err := glm.NewGLM(da, "BPXSY1", xnames, nil)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -232,9 +245,11 @@ zero penalty for the intercept.
 	conf.L1Penalty = l1pen
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
-	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	model := glm.NewGLM(ds, conf)
+	model, err := glm.NewGLM(da, "BPXSY1", xnames, conf)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -272,9 +287,11 @@ using a square root transform in the formula.
 	da = da.DropNA()
 
 	xnames := []string{"icept", "RIAGENDR", "sqrt(RIDAGEYR)", "RIDRETH1[1]", "RIDRETH1[2]", "RIDRETH1[3]", "RIDRETH1[4]"}
-	ds := statmodel.FromColumns(da, "BPXSY1", xnames)
 
-	model := glm.NewGLM(ds, nil)
+	model, err := glm.NewGLM(da, "BPXSY1", xnames, nil)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	fmt.Printf(msg + "\n")
@@ -318,11 +335,13 @@ the dependent variable, and gender and age as predictors.
 	da = da.DropNA()
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
-	ds := statmodel.FromColumns(da, "bin(BPXSY1)", xnames)
 
 	c := glm.DefaultConfig()
 	c.Family = glm.NewFamily(glm.BinomialFamily)
-	model := glm.NewGLM(ds, c)
+	model, err := glm.NewGLM(da, "bin(BPXSY1)", xnames, c)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 
 	smry := rslt.Summary()
@@ -360,14 +379,16 @@ variables.
 	da = da.DropNA()
 
 	xnames := []string{"icept", "RIAGENDR", "RIDAGEYR"}
-	ds := statmodel.FromColumns(da, "bin(BPXSY1)", xnames)
 
 	c := glm.DefaultConfig()
 	c.Family = glm.NewFamily(glm.BinomialFamily)
 	c.L1Penalty = map[string]float64{"RIAGENDR": 1}
 	c.L2Penalty = map[string]float64{"RIAGENDR": 0.01, "RIDAGEYR": 0.01}
 
-	model := glm.NewGLM(ds, c)
+	model, err := glm.NewGLM(da, "bin(BPXSY1)", xnames, c)
+	if err != nil {
+		panic(err)
+	}
 	rslt := model.Fit()
 	smry := rslt.Summary()
 

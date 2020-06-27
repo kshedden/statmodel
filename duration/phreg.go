@@ -189,35 +189,35 @@ func zerodtype(x []statmodel.Dtype) {
 
 // NewPHReg returns a PHReg value that can be used to fit a
 // proportional hazards regression model.
-func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg {
+func NewPHReg(data statmodel.Dataset, time, status string, predictors []string, config *PHRegConfig) (*PHReg, error) {
 
 	if config == nil {
 		config = DefaultPHRegConfig()
 	}
 
 	pos := make(map[string]int)
-	for i, v := range data.Varnames() {
+	for i, v := range data.Names() {
 		pos[v] = i
 	}
 
-	timepos, ok := pos[data.Yname()]
+	timepos, ok := pos[time]
 	if !ok {
-		msg := fmt.Sprintf("'%s' not found\n", data.Yname())
-		panic(msg)
+		msg := fmt.Sprintf("Time variable '%s' not found in dataset\n", time)
+		return nil, fmt.Errorf(msg)
 	}
 
 	statuspos, ok := pos[status]
 	if !ok {
-		msg := fmt.Sprintf("'%s' not found\n", status)
-		panic(msg)
+		msg := fmt.Sprintf("Status variable '%s' not found in dataset\n", status)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var xpos []int
-	for _, xna := range data.Xnames() {
+	for _, xna := range predictors {
 		xp, ok := pos[xna]
 		if !ok {
-			msg := fmt.Sprintf("'%s' not found\n", xna)
-			panic(msg)
+			msg := fmt.Sprintf("Predictor '%s' not found in dataset\n", xna)
+			return nil, fmt.Errorf(msg)
 		}
 		xpos = append(xpos, xp)
 	}
@@ -241,7 +241,7 @@ func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg
 	offsetpos := getpos(config.OffsetVar)
 	entrypos := getpos(config.EntryVar)
 
-	varnames := data.Varnames()
+	varnames := data.Names()
 
 	penToSlice := func(m map[string]float64) []float64 {
 		if m == nil || len(m) == 0 {
@@ -276,7 +276,7 @@ func NewPHReg(data statmodel.Dataset, status string, config *PHRegConfig) *PHReg
 
 	ph.init()
 
-	return ph
+	return ph, nil
 }
 
 func (ph *PHReg) init() {

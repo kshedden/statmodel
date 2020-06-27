@@ -21,6 +21,7 @@ const (
 type difftestprob struct {
 	title  string
 	data   statmodel.Dataset
+	xnames []string
 	weight bool
 	offset bool
 	params [][]float64
@@ -31,21 +32,25 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "",
 		data:   data1(),
+		xnames: []string{"x"},
 		params: [][]float64{{0}, {1}, {-1}, {0.5}, {-0.5}},
 	},
 	{
 		title:  "",
 		data:   data2(),
+		xnames: []string{"x1", "x2"},
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}, {-2, 1}},
 	},
 	{
 		title:  "",
 		data:   data3(),
+		xnames: []string{"x1", "x2"},
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}, {2, -1}},
 	},
 	{
 		title:  "",
 		data:   data4(),
+		xnames: []string{"x1", "x2"},
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}, {-0.5, 1.3}},
 	},
 }
@@ -56,7 +61,10 @@ func TestGrad(t *testing.T) {
 
 		config := DefaultPHRegConfig()
 
-		model := NewPHReg(dt.data, "Status", config)
+		model, err := NewPHReg(dt.data, "time", "status", dt.xnames, config)
+		if err != nil {
+			panic(err)
+		}
 
 		p := len(dt.params[0])
 		ngrad := make([]float64, p)

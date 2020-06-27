@@ -18,6 +18,7 @@ type difftestprob struct {
 	title  string
 	family *Family
 	data   statmodel.Dataset
+	xnames []string
 	weight bool
 	offset bool
 	params [][]float64
@@ -29,7 +30,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Gaussian 1",
 		family: NewFamily(GaussianFamily),
-		data:   data1(false),
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
 		weight: false,
 		scale:  2,
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}},
@@ -37,7 +39,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Gaussian 2",
 		family: NewFamily(GaussianFamily),
-		data:   data1(true),
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
 		weight: true,
 		scale:  2,
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}},
@@ -45,7 +48,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Poisson 1",
 		family: NewFamily(PoissonFamily),
-		data:   data1(false),
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
 		weight: false,
 		scale:  1,
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}},
@@ -53,7 +57,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Poisson 2",
 		family: NewFamily(PoissonFamily),
-		data:   data1(true),
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
 		weight: true,
 		scale:  1,
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}},
@@ -61,7 +66,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Binomial 1",
 		family: NewFamily(BinomialFamily),
-		data:   data2(true),
+		data:   data2(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: [][]float64{{1, 0, 0}, {0, 1, 0}, {1, 1, 1}, {-1, 0, 1}},
 		scale:  1,
@@ -69,7 +75,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Gamma 1",
 		family: NewFamily(GammaFamily),
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		weight: true,
 		params: [][]float64{{1, 0, 0}, {1, 1, 1}, {1, 0, -0.1}},
 		scale:  2,
@@ -77,7 +84,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Inverse Gaussian 1",
 		family: NewFamily(InvGaussianFamily),
-		data:   data4(true),
+		data:   data4(),
+		xnames: []string{"x1", "x2", "x3"},
 		params: [][]float64{{1, 0, 0}, {1, 1, 1}, {1, 0, -0.1}},
 		weight: true,
 		scale:  0.5,
@@ -85,7 +93,8 @@ var diffTests []difftestprob = []difftestprob{
 	{
 		title:  "Tweedie 1",
 		family: NewTweedieFamily(1.5, NewLink(LogLink)),
-		data:   data1(false),
+		data:   data1(),
+		xnames: []string{"x1", "x2"},
 		params: [][]float64{{1, 0}, {0, 1}, {1, 1}, {-1, 1}},
 		weight: false,
 		scale:  1.2,
@@ -102,7 +111,10 @@ func TestGrad(t *testing.T) {
 			config.WeightVar = "w"
 		}
 
-		glm := NewGLM(dt.data, config)
+		glm, err := NewGLM(dt.data, "y", dt.xnames, config)
+		if err != nil {
+			panic(err)
+		}
 
 		p := len(dt.params[0])
 		ngrad := make([]float64, p)
