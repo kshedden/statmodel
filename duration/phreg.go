@@ -1093,89 +1093,89 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 // Focus returns a new PHReg instance with a single variable, which is variable j in the
 // original model.  The effects of the remaining covariates are captured
 // through the offset.
-func (model *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.RegFitter {
+func (ph *PHReg) Focus(pos int, coeff []float64, offset []float64) statmodel.RegFitter {
 
-	fmodel := *model
+	fph := *ph
 
-	fmodel.varnames = []string{
-		model.varnames[model.timepos],
-		model.varnames[model.statuspos],
-		model.varnames[model.xpos[pos]],
+	fph.varnames = []string{
+		ph.varnames[ph.timepos],
+		ph.varnames[ph.statuspos],
+		ph.varnames[ph.xpos[pos]],
 	}
 
-	fmodel.data = [][]statmodel.Dtype{
-		model.data[model.timepos],
-		model.data[model.statuspos],
-		model.data[model.xpos[pos]],
+	fph.data = [][]statmodel.Dtype{
+		ph.data[ph.timepos],
+		ph.data[ph.statuspos],
+		ph.data[ph.xpos[pos]],
 	}
 
-	fmodel.timepos = 0
-	fmodel.statuspos = 1
-	fmodel.xpos = []int{2}
-	fmodel.start = []float64{coeff[pos]}
-	fmodel.log = model.log
+	fph.timepos = 0
+	fph.statuspos = 1
+	fph.xpos = []int{2}
+	fph.start = []float64{coeff[pos]}
+	fph.log = ph.log
 
 	// These are not used for coordinate optimization
-	fmodel.optsettings = nil
-	fmodel.optmethod = nil
+	fph.optsettings = nil
+	fph.optmethod = nil
 
 	add := func(pos int) int {
 		if pos == -1 {
 			return -1
 		}
-		fmodel.varnames = append(fmodel.varnames, model.varnames[pos])
-		fmodel.data = append(fmodel.data, model.data[pos])
-		return len(fmodel.data) - 1
+		fph.varnames = append(fph.varnames, ph.varnames[pos])
+		fph.data = append(fph.data, ph.data[pos])
+		return len(fph.data) - 1
 	}
 
-	fmodel.weightpos = add(model.weightpos)
-	fmodel.entrypos = add(model.entrypos)
-	fmodel.stratapos = add(model.stratapos)
+	fph.weightpos = add(ph.weightpos)
+	fph.entrypos = add(ph.entrypos)
+	fph.stratapos = add(ph.stratapos)
 
 	// Allocate a new slice for the offset
-	nobs := model.NumObs()
+	nobs := ph.NumObs()
 	if cap(offset) < nobs {
 		offset = make([]float64, nobs)
 	} else {
 		offset = offset[0:nobs]
 		zero(offset)
 	}
-	fmodel.varnames = append(fmodel.varnames, "__offset")
-	fmodel.data = append(fmodel.data, make([]statmodel.Dtype, model.NumObs()))
-	fmodel.offsetpos = len(fmodel.data) - 1
+	fph.varnames = append(ph.varnames, "__offset")
+	fph.data = append(fph.data, make([]statmodel.Dtype, ph.NumObs()))
+	fph.offsetpos = len(fph.data) - 1
 
 	// Fill in the offset
-	off := fmodel.data[fmodel.offsetpos]
+	off := fph.data[fph.offsetpos]
 	zerodtype(off)
-	for j, k := range model.xpos {
+	for j, k := range ph.xpos {
 		if j != pos {
 			for i := range off {
-				off[i] += statmodel.Dtype(coeff[j] * float64(model.data[k][i]))
+				off[i] += statmodel.Dtype(coeff[j] * float64(ph.data[k][i]))
 			}
 		}
 	}
 
 	// Add the original offset if present
-	if model.offsetpos != -1 {
-		offsetOrig := model.data[model.offsetpos]
+	if ph.offsetpos != -1 {
+		offsetOrig := ph.data[ph.offsetpos]
 		for i := range offsetOrig {
 			off[i] += offsetOrig[i]
 		}
 	}
 
-	if model.l2wgtMap != nil {
-		fmodel.l2wgtMap = make(map[string]float64)
-		vn := model.varnames[model.xpos[pos]]
-		fmodel.l2wgtMap[vn] = model.l2wgtMap[vn]
-		fmodel.l2wgt = []float64{model.l2wgtMap[vn]}
+	if ph.l2wgtMap != nil {
+		fph.l2wgtMap = make(map[string]float64)
+		vn := ph.varnames[ph.xpos[pos]]
+		fph.l2wgtMap[vn] = ph.l2wgtMap[vn]
+		fph.l2wgt = []float64{ph.l2wgtMap[vn]}
 	} else {
-		fmodel.l2wgt = nil
+		fph.l2wgt = nil
 	}
 
-	fmodel.l1wgtMap = nil
-	fmodel.l1wgt = nil
+	fph.l1wgtMap = nil
+	fph.l1wgt = nil
 
-	return &fmodel
+	return &fph
 }
 
 func (rslt *PHResults) summaryStats() (int, int, int, int) {

@@ -1,9 +1,7 @@
 language: go
 
 go:
- - 1.12.x
- - 1.11.x
- - 1.10.x
+ - 1.14.x
  - master
 
 script:
@@ -18,8 +16,7 @@ before_install:
  - go get github.com/kshedden/statmodel/statmodel
  - go get github.com/kshedden/statmodel/glm
  - go get github.com/kshedden/statmodel/duration
- - go get github.com/kshedden/dstream/dstream
- - go get github.com/kshedden/dstream/formula
+ - go get github.com/kshedden/formula
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
