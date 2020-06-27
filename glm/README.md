@@ -13,8 +13,6 @@ Supported features
 
 * Supports estimation for case-weighted datasets
 
-* Models can be specified using formulas
-
 * Regularized (ridge/LASSO/elastic net) estimation
 
 * Offsets
