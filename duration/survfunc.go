@@ -6,11 +6,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/kshedden/dstream/dstream"
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/plotutil"
-	"gonum.org/v1/plot/vg"
+	"github.com/kshedden/statmodel/statmodel"
 )
 
 // SurvfuncRight uses the method of Kaplan and Meier to estimate the
@@ -18,26 +14,23 @@ import (
 // caller must set Data and TimeVar before calling the Fit method.
 // StatusVar, WeightVar, and EntryVar are optional fields.
 type SurvfuncRight struct {
-
-	// The data used to perform the estimation.
-	data dstream.Dstream
+	data [][]float64
 
 	// The name of the variable containing the minimum of the
-	// event time and entry time.  The underlying data must have
-	// float64 type.
-	timeVar string
+	// event time and entry time.
+	timepos int
 
 	// The name of a variable containing the status indicator,
 	// which is 1 if the event occurred at the time given by
 	// TimeVar, and 0 otherwise.  This is optional, and is assumed
 	// to be identically equal to 1 if not present.
-	statusVar string
+	statuspos int
 
 	// The name of a variable containing case weights, optional.
-	weightVar string
+	weightpos int
 
 	// The name of a variable containing entry times, optional.
-	entryVar string
+	entrypos int
 
 	// Times at which events occur, sorted.
 	times []float64
@@ -57,38 +50,77 @@ type SurvfuncRight struct {
 	events map[float64]float64
 	total  map[float64]float64
 	entry  map[float64]float64
+}
 
-	timepos   int
-	statuspos int
-	weightpos int
-	entrypos  int
+type SurvfuncRightConfig struct {
+	WeightVar string
+	EntryVar  string
 }
 
 // NewSurvfuncRight creates a new value for fitting a survival function.
-func NewSurvfuncRight(data dstream.Dstream, timevar, statusvar string) *SurvfuncRight {
+func NewSurvfuncRight(data statmodel.Dataset, time, status string, config *SurvfuncRightConfig) (*SurvfuncRight, error) {
+
+	pos := make(map[string]int)
+	for i, v := range data.Names() {
+		pos[v] = i
+	}
+
+	timepos, ok := pos[time]
+	if !ok {
+		msg := fmt.Sprintf("Time variable '%s' not found in dataset\n", time)
+		return nil, fmt.Errorf(msg)
+	}
+
+	statuspos, ok := pos[status]
+	if !ok {
+		msg := fmt.Sprintf("Status variable '%s' not found in dataset\n", status)
+		return nil, fmt.Errorf(msg)
+	}
+
+	getpos := func(cfg *SurvfuncRightConfig, field string) int {
+		if cfg == nil {
+			return -1
+		}
+
+		var vn string
+		switch field {
+		case "weight":
+			vn = config.WeightVar
+		case "entry":
+			vn = config.EntryVar
+		default:
+			panic("!!")
+		}
+
+		if vn == "" {
+			return -1
+		}
+
+		loc, ok := pos[vn]
+		if !ok {
+			msg := fmt.Sprintf("'%s' not found\n", vn)
+			panic(msg)
+		}
+
+		return loc
+	}
 
 	return &SurvfuncRight{
-		data:      data,
-		timeVar:   timevar,
-		statusVar: statusvar,
-	}
+		data:      data.Data(),
+		timepos:   timepos,
+		statuspos: statuspos,
+		weightpos: getpos(config, "weight"),
+		entrypos:  getpos(config, "entry"),
+	}, nil
 }
 
-// Weight specifies the name of a case weight variable.
-func (sf *SurvfuncRight) Weight(weight string) *SurvfuncRight {
-	sf.weightVar = weight
-	return sf
-}
+func (sf *SurvfuncRight) Fit() {
 
-// Entry specifies the name of an entry time variable.
-func (sf *SurvfuncRight) Entry(entry string) *SurvfuncRight {
-	sf.entryVar = entry
-	return sf
-}
-
-// Time returns the times at which the survival function changes.
-func (sf *SurvfuncRight) Time() []float64 {
-	return sf.times
+	sf.init()
+	sf.scanData()
+	sf.eventstats()
+	sf.compress()
+	sf.fit()
 }
 
 // NumRisk returns the number of people at risk at each time point
@@ -114,85 +146,51 @@ func (sf *SurvfuncRight) init() {
 	sf.events = make(map[float64]float64)
 	sf.total = make(map[float64]float64)
 	sf.entry = make(map[float64]float64)
-
-	sf.data.Reset()
-
-	sf.timepos = -1
-	sf.statuspos = -1
-	sf.weightpos = -1
-	sf.entrypos = -1
-
-	for k, na := range sf.data.Names() {
-		switch na {
-		case sf.timeVar:
-			sf.timepos = k
-		case sf.statusVar:
-			sf.statuspos = k
-		case sf.weightVar:
-			sf.weightpos = k
-		case sf.entryVar:
-			sf.entrypos = k
-		}
-	}
-
-	if sf.timepos == -1 {
-		panic("Time variable not found")
-	}
-	if sf.statuspos == -1 {
-		panic("Status variable not found")
-	}
-	if sf.weightVar != "" && sf.weightpos == -1 {
-		panic("Status variable not found")
-	}
-	if sf.entryVar != "" && sf.entrypos == -1 {
-		panic("Entry variable not found")
-	}
 }
 
 func (sf *SurvfuncRight) scanData() {
 
-	for j := 0; sf.data.Next(); j++ {
+	var weight []float64
+	if sf.weightpos != -1 {
+		weight = sf.data[sf.weightpos]
+	}
 
-		time := sf.data.GetPos(sf.timepos).([]float64)
+	var status []float64
+	if sf.statuspos != -1 {
+		status = sf.data[sf.statuspos]
+	}
 
-		var status []float64
-		if sf.statuspos != -1 {
-			status = sf.data.GetPos(sf.statuspos).([]float64)
-		}
+	var entry []float64
+	if sf.entrypos != -1 {
+		entry = sf.data[sf.entrypos]
+	}
 
-		var entry []float64
-		if sf.entrypos != -1 {
-			entry = sf.data.GetPos(sf.entrypos).([]float64)
-		}
+	for i, t := range sf.data[sf.timepos] {
 
-		var weight []float64
+		w := 1.0
 		if sf.weightpos != -1 {
-			weight = sf.data.GetPos(sf.weightpos).([]float64)
+			w = weight[i]
 		}
 
-		for i, t := range time {
+		if status == nil || status[i] == 1 {
+			sf.events[t] += w
+		}
+		sf.total[t] += w
 
-			w := float64(1)
-			if sf.weightpos != -1 {
-				w = weight[i]
+		if sf.entrypos != -1 {
+			if entry[i] >= t {
+				msg := fmt.Sprintf("Entry time %d is before the event/censoring time\n",
+					i)
+				os.Stderr.WriteString(msg)
+				os.Exit(1)
 			}
-
-			if sf.statuspos == -1 || status[i] == 1 {
-				sf.events[t] += w
-			}
-			sf.total[t] += w
-
-			if sf.entrypos != -1 {
-				if entry[i] >= t {
-					msg := fmt.Sprintf("Entry time %d in chunk %d is before the event/censoring time\n",
-						i, j)
-					os.Stderr.WriteString(msg)
-					os.Exit(1)
-				}
-				sf.entry[entry[i]] += w
-			}
+			sf.entry[entry[i]] += w
 		}
 	}
+}
+
+func (sf *SurvfuncRight) Time() []float64 {
+	return sf.times
 }
 
 func rollback(x []float64) {
@@ -292,137 +290,5 @@ func (sf *SurvfuncRight) fit() {
 			x += d / (n * n)
 			sf.survProbSE[i] = math.Sqrt(x)
 		}
-	}
-}
-
-// Done indicates that the survival function has been configured and can now be fit.
-func (sf *SurvfuncRight) Done() *SurvfuncRight {
-	sf.init()
-	sf.scanData()
-	sf.eventstats()
-	sf.compress()
-	sf.fit()
-	return sf
-}
-
-// SurvfuncRightPlotter is used to plot a survival function.
-type SurvfuncRightPlotter struct {
-	pts []plotter.XYs
-	plt *plot.Plot
-
-	labels []string
-
-	lines []*plotter.Line
-
-	width  vg.Length
-	height vg.Length
-}
-
-// NewSurvfuncRightPlotter returns a default SurvfuncRightPlotter.
-func NewSurvfuncRightPlotter() *SurvfuncRightPlotter {
-
-	sp := &SurvfuncRightPlotter{
-		width:  4,
-		height: 4,
-	}
-
-	var err error
-	sp.plt, err = plot.New()
-	if err != nil {
-		panic(err)
-	}
-
-	return sp
-}
-
-// Width sets the width of the survival function plot.
-func (sp *SurvfuncRightPlotter) Width(w float64) *SurvfuncRightPlotter {
-	sp.width = vg.Length(w)
-	return sp
-}
-
-// Height sets the height of the survival function plot.
-func (sp *SurvfuncRightPlotter) Height(h float64) *SurvfuncRightPlotter {
-	sp.height = vg.Length(h)
-	return sp
-}
-
-// Add plots a given survival function to the plot.
-func (sp *SurvfuncRightPlotter) Add(sf *SurvfuncRight, label string) *SurvfuncRightPlotter {
-
-	ti := sf.Time()
-	pr := sf.SurvProb()
-
-	m := len(ti)
-	n := 2*m + 1
-
-	pts := make(plotter.XYs, n)
-
-	j := 0
-	pts[j].X = 0
-	pts[j].Y = 1
-	j++
-
-	for i := range ti {
-		pts[j].X = ti[i]
-		pts[j].Y = pts[j-1].Y
-		j++
-		pts[j].X = ti[i]
-		pts[j].Y = pr[i]
-		j++
-	}
-
-	sp.pts = append(sp.pts, pts)
-
-	sp.labels = append(sp.labels, label)
-
-	line, err := plotter.NewLine(pts)
-	if err != nil {
-		panic(err)
-	}
-	line.Color = plotutil.Color(len(sp.lines))
-	sp.lines = append(sp.lines, line)
-
-	return sp
-}
-
-// Plot constructs the plot.
-func (sp *SurvfuncRightPlotter) Plot() *SurvfuncRightPlotter {
-
-	sp.plt.Y.Min = 0
-	sp.plt.Y.Max = 1
-
-	sp.plt.X.Label.Text = "Time"
-	sp.plt.Y.Label.Text = "Proportion alive"
-
-	leg, err := plot.NewLegend()
-	if err != nil {
-		panic(err)
-	}
-
-	for i := range sp.lines {
-		sp.plt.Add(sp.lines[i])
-		leg.Add(sp.labels[i], sp.lines[i])
-	}
-
-	if len(sp.lines) > 1 {
-		leg.Top = false
-		leg.Left = true
-		sp.plt.Legend = leg
-	}
-
-	return sp
-}
-
-// GetPlotStruct returns the plotting structure for this plot.
-func (sp *SurvfuncRightPlotter) GetPlotStruct() *plot.Plot {
-	return sp.plt
-}
-
-// Save writes the plot to the given file.
-func (sp *SurvfuncRightPlotter) Save(fname string) {
-
-	if err := sp.plt.Save(sp.width*vg.Inch, sp.height*vg.Inch, fname); err != nil {
-		panic(err)
 	}
 }

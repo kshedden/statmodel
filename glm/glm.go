@@ -242,8 +242,8 @@ func checkValid(data statmodel.Dataset) error {
 	return nil
 }
 
-// NewGLM creates a new GLM object for the given family, using its
-// default link and variance functions.
+// NewGLM creates a new generalized linear model for the given family,
+// using its default link and variance functions.
 func NewGLM(data statmodel.Dataset, outcome string, predictors []string, config *Config) (*GLM, error) {
 
 	if config == nil {
@@ -541,8 +541,8 @@ func scoreFactor(yda []statmodel.Dtype, mn, deriv, va, sfac []float64) {
 	}
 }
 
-// Score returns the score vector for the generalized linear model at
-// the given parameter values.
+// Score evaluates the score function for the GLM at the given
+// parameter values.
 func (model *GLM) Score(params statmodel.Parameter, score []float64) {
 
 	gpar := params.(*GLMParams)

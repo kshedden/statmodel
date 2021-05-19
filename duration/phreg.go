@@ -1032,8 +1032,10 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 
 	nvar := len(ph.xpos)
 
-	if ph.start == nil {
-		ph.start = make([]float64, nvar)
+	if ph.optsettings == nil {
+		ph.optsettings = &optimize.Settings{
+			GradientThreshold: 1e-4,
+		}
 	}
 
 	p := optimize.Problem{
@@ -1049,10 +1051,21 @@ func (ph *PHReg) Fit() (*PHResults, error) {
 		},
 	}
 
-	if ph.optsettings == nil {
-		ph.optsettings = &optimize.Settings{
-			GradientThreshold: 1e-5,
+	// If no starting values are provided, do five rounds of gradient descent,
+	// starting from the origin.
+	if ph.start == nil {
+		start := make([]float64, nvar)
+
+		s := &optimize.Settings{
+			MajorIterations: 5,
 		}
+
+		optrslt, err := optimize.Minimize(p, start, s, &optimize.GradientDescent{})
+		if err != nil {
+			panic(err)
+		}
+
+		ph.start = optrslt.X
 	}
 
 	var xna []string

@@ -5,9 +5,8 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/kshedden/statmodel/statmodel"
 	"gonum.org/v1/gonum/floats"
-
-	"github.com/kshedden/dstream/dstream"
 )
 
 // Concordance calculates the survival concordance of Uno et al.
@@ -77,9 +76,13 @@ func (c *Concordance) Done() *Concordance {
 	}
 
 	// Get the survival function for censoring
-	da := dstream.NewFromArrays([][]interface{}{{time1}, {statusr}},
-		[]string{"Time", "Status"})
-	c.sf = NewSurvfuncRight(da, "Time", "Status").Done()
+	ds := statmodel.NewDataset([][]float64{time1, statusr}, []string{"Time", "Status"})
+	var err error
+	c.sf, err = NewSurvfuncRight(ds, "Time", "Status", nil)
+	if err != nil {
+		panic(err)
+	}
+
 	if ncens == 0 {
 		// No censoring, create a censoring survival function
 		// with P(T>t) = 1 for all t.

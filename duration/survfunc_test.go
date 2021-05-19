@@ -6,7 +6,7 @@ import (
 
 	"gonum.org/v1/gonum/floats"
 
-	"github.com/kshedden/dstream/dstream"
+	"github.com/kshedden/statmodel/statmodel"
 )
 
 func TestSF1(t *testing.T) {
@@ -20,13 +20,16 @@ func TestSF1(t *testing.T) {
 		status = append(status, 1)
 	}
 
-	var z [][]interface{}
-	z = append(z, []interface{}{time})
-	z = append(z, []interface{}{status})
+	z := [][]float64{time, status}
 	na := []string{"Time", "Status"}
-	data := dstream.NewFromArrays(z, na)
+	ds := statmodel.NewDataset(z, na)
 
-	sf := NewSurvfuncRight(data, "Time", "Status").Done()
+	sf, err := NewSurvfuncRight(ds, "Time", "Status", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	sf.Fit()
 
 	// Check times and risk set sizes
 	times := sf.Time()
@@ -75,14 +78,20 @@ func TestSF2(t *testing.T) {
 		weight = append(weight, float64(1+i%3))
 	}
 
-	var z [][]interface{}
-	z = append(z, []interface{}{time})
-	z = append(z, []interface{}{status})
-	z = append(z, []interface{}{weight})
+	z := [][]float64{time, status, weight}
 	na := []string{"Time", "Status", "Weight"}
-	data := dstream.NewFromArrays(z, na)
+	ds := statmodel.NewDataset(z, na)
 
-	sf := NewSurvfuncRight(data, "Time", "Status").Weight("Weight").Done()
+	cfg := &SurvfuncRightConfig{
+		WeightVar: "Weight",
+	}
+
+	sf, err := NewSurvfuncRight(ds, "Time", "Status", cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	sf.Fit()
 
 	// Check times and risk set sizes
 	times := sf.Time()
@@ -126,14 +135,20 @@ func TestSF3(t *testing.T) {
 		entry = append(entry, float64((10+i)/2))
 	}
 
-	var z [][]interface{}
-	z = append(z, []interface{}{time})
-	z = append(z, []interface{}{status})
-	z = append(z, []interface{}{entry})
+	z := [][]float64{time, status, entry}
 	na := []string{"Time", "Status", "Entry"}
-	data := dstream.NewFromArrays(z, na)
+	data := statmodel.NewDataset(z, na)
 
-	sf := NewSurvfuncRight(data, "Time", "Status").Entry("Entry").Done()
+	cfg := &SurvfuncRightConfig{
+		EntryVar: "Entry",
+	}
+
+	sf, err := NewSurvfuncRight(data, "Time", "Status", cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	sf.Fit()
 
 	// Check times and risk set sizes
 	times := sf.Time()
@@ -183,15 +198,21 @@ func TestSF4(t *testing.T) {
 		weight = append(weight, float64(1+(i%3)))
 	}
 
-	var z [][]interface{}
-	z = append(z, []interface{}{time})
-	z = append(z, []interface{}{status})
-	z = append(z, []interface{}{entry})
-	z = append(z, []interface{}{weight})
+	z := [][]float64{time, status, entry, weight}
 	na := []string{"Time", "Status", "Entry", "Weight"}
-	data := dstream.NewFromArrays(z, na)
+	data := statmodel.NewDataset(z, na)
 
-	sf := NewSurvfuncRight(data, "Time", "Status").Entry("Entry").Weight("Weight").Done()
+	cfg := &SurvfuncRightConfig{
+		EntryVar:  "Entry",
+		WeightVar: "Weight",
+	}
+
+	sf, err := NewSurvfuncRight(data, "Time", "Status", cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	sf.Fit()
 
 	// Check times and risk set sizes
 	times := sf.Time()
@@ -241,15 +262,21 @@ func TestSF5(t *testing.T) {
 		weight = append(weight, float64(1+(i%3)))
 	}
 
-	var z [][]interface{}
-	z = append(z, []interface{}{time})
-	z = append(z, []interface{}{status})
-	z = append(z, []interface{}{entry})
-	z = append(z, []interface{}{weight})
+	z := [][]float64{time, status, entry, weight}
 	na := []string{"Time", "Status", "Entry", "Weight"}
-	data := dstream.NewFromArrays(z, na)
+	data := statmodel.NewDataset(z, na)
 
-	sf := NewSurvfuncRight(data, "Time", "Status").Entry("Entry").Weight("Weight").Done()
+	cfg := &SurvfuncRightConfig{
+		EntryVar:  "Entry",
+		WeightVar: "Weight",
+	}
+
+	sf, err := NewSurvfuncRight(data, "Time", "Status", cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	sf.Fit()
 
 	// Check times and risk set sizes
 	times := sf.Time()
@@ -281,46 +308,5 @@ func TestSF5(t *testing.T) {
 	}
 	if !floats.EqualApprox(se, sf.SurvProbSE(), 1e-6) {
 		t.Fail()
-	}
-}
-
-func TestPlotSurvfunc(t *testing.T) {
-
-	for _, r := range []struct {
-		time   []float64
-		status []float64
-		fname  string
-	}{
-		{
-			time:   []float64{0, 5, 7, 9},
-			status: []float64{1, 1, 0, 1},
-			fname:  "plot1.png",
-		},
-		{
-			time:   []float64{0, 5, 7, 9},
-			status: []float64{0, 1, 0, 1},
-			fname:  "plot2.png",
-		},
-		{
-			time:   []float64{0, 5, 7, 9},
-			status: []float64{1, 1, 0, 0},
-			fname:  "plot3.png",
-		},
-		{
-			time:   []float64{0, 5, 7, 9},
-			status: []float64{0, 1, 0, 0},
-			fname:  "plot4.png",
-		},
-	} {
-		var z [][]interface{}
-		z = append(z, []interface{}{r.time})
-		z = append(z, []interface{}{r.status})
-		na := []string{"Time", "Status"}
-		data := dstream.NewFromArrays(z, na)
-
-		sf := NewSurvfuncRight(data, "Time", "Status").Done()
-
-		sp := NewSurvfuncRightPlotter()
-		sp.Add(sf, "").Width(6).Plot().Save(r.fname)
 	}
 }
